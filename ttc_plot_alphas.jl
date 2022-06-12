@@ -65,12 +65,12 @@ std_eff_translation = Float64[]
 v_eff_translation = Float64[]
 std_eff_transcription = Float64[]
 for α in αs
-    v_eff_transcriptions = (L)./df.T_transcription[df.α .== α]
-    v_eff_translations = (L)./df.T_translation[df.α .== α]
-    push!(v_eff_transcription, mean(v_eff_transcriptions))
-    push!(std_eff_translation, std(v_eff_translations))
-    push!(v_eff_translation, mean(v_eff_translations))
-    push!(std_eff_transcription, std(v_eff_transcriptions))
+    T_transcriptions = df.T_transcription[df.α .== α]
+    T_translations = df.T_translation[df.α .== α]
+    push!(v_eff_transcription, L/mean(T_transcriptions))
+    push!(std_eff_transcription, (L/(mean(T_transcriptions)-std(T_transcriptions)) - L/(mean(T_transcriptions)+std(T_transcriptions)) )/2)
+    push!(v_eff_translation, L/mean(T_translations))
+    push!(std_eff_translation, (L/(mean(T_translations)-std(T_translations)) - L/(mean(T_translations)+std(T_translations)) )/2)
 end
 plot_line = Plot(Coordinates(αs, v_eff_transcription; yerror= std_eff_transcription ))
 legend_line = LegendEntry("transcription")

@@ -69,12 +69,12 @@ std_eff_translation = Float64[]
 v_eff_translation = Float64[]
 std_eff_transcription = Float64[]
 for E_c in E_cs
-    v_eff_transcriptions = (L)./df.T_transcription[df.E_c .== E_c]
-    v_eff_translations = (L)./df.T_translation[df.E_c .== E_c]
-    push!(v_eff_transcription, mean(v_eff_transcriptions))
-    push!(std_eff_translation, std(v_eff_translations))
-    push!(v_eff_translation, mean(v_eff_translations))
-    push!(std_eff_transcription, std(v_eff_transcriptions))
+    T_transcriptions = df.T_transcription[df.E_c == E_c]
+    T_translations = df.T_translation[df.E_c == E_c]
+    push!(v_eff_transcription, L/mean(T_transcriptions))
+    push!(std_eff_transcription, (L/(mean(T_transcriptions)-std(T_transcriptions)) - L/(mean(T_transcriptions)+std(T_transcriptions)) )/2)
+    push!(v_eff_translation, L/mean(T_translations))
+    push!(std_eff_translation, (L/(mean(T_translations)-std(T_translations)) - L/(mean(T_translations)+std(T_translations)) )/2)
 end
 plot_df = DataFrame(
     E_cs = E_cs, 

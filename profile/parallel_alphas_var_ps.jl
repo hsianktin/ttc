@@ -83,7 +83,7 @@ sort!(df,[:α,:v_translations])
 ### Create dataframe 
 merged_df = DataFrame(
     α = Float64[],
-    ps = Float64[],
+    p = Float64[],
     v_transcriptions = Float64[],
     fraction_protected = Float64[],
     std_fraction_exposure = Float64[],
@@ -98,8 +98,8 @@ merged_df = DataFrame(
 for p in ps
     temp_df = df[df.v_translations .== p,:]
     for α in αs
-        v_eff_transcriptions = (L)./temp_df.T_transcription[temp_df.α .== α]
-        v_eff_translations = (L)./temp_df.T_translation[temp_df.α .== α]
+        T_transcriptions =temp_df.T_transcription[temp_df.α .== α]
+        T_translations =temp_df.T_translation[temp_df.α .== α]
         fractions_T_exposure = temp_df.T_exposure[temp_df.α .== α]./temp_df.T_transcription[temp_df.α .== α]
         fractions_T_exposure_uncoupled = temp_df.T_exposure_uncoupled[temp_df.α .== α]./temp_df.T_transcription[temp_df.α .== α]
         push!(merged_df,
@@ -109,12 +109,12 @@ for p in ps
                 q,
                 1-mean(fractions_T_exposure),
                 std(fractions_T_exposure),
-                mean(v_eff_translations),
-                mean(v_eff_transcriptions),
-                std(v_eff_translations),
-                std(v_eff_transcriptions),
-                mean(v_eff_translations)/p,
-                std(v_eff_translations)/p,
+                L/mean(T_translations),
+                L/mean(T_transcriptions),
+                (L/(mean(T_translations)-std(T_translations)) - L/(mean(T_translations)+std(T_translations)) )/2,
+                (L/(mean(T_transcriptions)-std(T_transcriptions)) - L/(mean(T_transcriptions)+std(T_transcriptions)) )/2,
+                (L/mean(T_translations))/p,
+                ((L/(mean(T_translations)-std(T_translations)) - L/(mean(T_translations)+std(T_translations)) )/2)/p,
             ]
         )
     end
@@ -150,7 +150,7 @@ sizes = [1.8,2,1.8,2]
 
 for i in 1:length(ps)
     t = @pgf Table({x = "α", y = "v_eff_transcriptions", "col sep"="comma"},"merged_df_$(label).csv")
-    string = "discard if not={ps}{$(ps[i])}"
+    string = "discard if not={p}{$(ps[i])}"
     t[string]=nothing
     plot_line = @pgf Plot(
         {
@@ -179,7 +179,7 @@ pgfsave("fig/effective_velocity_plot_$(label).tex",axis)
 
 for i in 1:length(ps)
     t = @pgf Table({x = "α", y = "fraction_protected", "col sep"="comma"},"merged_df_$(label).csv")
-    string = "discard if not={ps}{$(ps[i])}"
+    string = "discard if not={p}{$(ps[i])}"
     t[string]=nothing
     plot_line = @pgf Plot(
         {
@@ -207,7 +207,7 @@ pgfsave("fig/fraction_protected_plot_$(label).tex",axis)
 )
 for i in 1:length(ps)
     t = @pgf Table({x = "fraction_protected", y = "efficiency", "col sep"="comma"},"merged_df_$(label).csv")
-    string = "discard if not={ps}{$(ps[i])}"
+    string = "discard if not={p}{$(ps[i])}"
     t[string]=nothing
     plot_line = @pgf Plot(
         {

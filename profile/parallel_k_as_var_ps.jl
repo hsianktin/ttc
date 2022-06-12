@@ -107,8 +107,8 @@ merged_df = DataFrame(
 for p in ps
     temp_df = df[df.v_translations .== p,:]
     for k_couple in k_couples
-        v_eff_transcriptions = (L)./temp_df.T_transcription[temp_df.k_couple .== k_couple]
-        v_eff_translations = (L)./temp_df.T_translation[temp_df.k_couple .== k_couple]
+        T_transcriptions = temp_df.T_transcription[temp_df.k_couple .== k_couple]
+        T_translations = temp_df.T_translation[temp_df.k_couple .== k_couple]
         fractions_T_exposure = temp_df.T_exposure[temp_df.k_couple .== k_couple]./temp_df.T_transcription[temp_df.k_couple .== k_couple]
         fractions_T_exposure_uncoupled = temp_df.T_exposure_uncoupled[temp_df.k_couple .== k_couple]./temp_df.T_transcription[temp_df.k_couple .== k_couple]
         push!(merged_df,
@@ -118,12 +118,12 @@ for p in ps
                 q,
                 1-mean(fractions_T_exposure),
                 std(fractions_T_exposure),
-                mean(v_eff_translations),
-                mean(v_eff_transcriptions),
-                std(v_eff_translations),
-                std(v_eff_transcriptions),
-                mean(v_eff_translations)/p,
-                std(v_eff_translations)/p,
+                L/mean(T_translations),
+                L/mean(T_transcriptions),
+                (L/(mean(T_translations)-std(T_translations)) - L/(mean(T_translations)+std(T_translations)) )/2,
+                (L/(mean(T_transcriptions)-std(T_transcriptions)) - L/(mean(T_transcriptions)+std(T_transcriptions)) )/2,
+                (L/mean(T_translations))/p,
+                ((L/(mean(T_translations)-std(T_translations)) - L/(mean(T_translations)+std(T_translations)) )/2)/p,
             ]
         )
     end

@@ -92,7 +92,7 @@ push!(PGFPlotsX.CUSTOM_PREAMBLE,raw"\pgfplotsset{
 #### Creating DataFrame ####
 merged_df = DataFrame(
     mode = String[],
-    v_translations = Float64[],
+    p = Float64[],
     v_transcriptions = Float64[],
     fraction_protected = Float64[],
     std_fraction_protected = Float64[],
@@ -107,8 +107,8 @@ merged_df = DataFrame(
 for mode in modes
     temp_df = df[df.mode .== mode,:]
     for p in ps
-        v_eff_transcriptions = (L)./temp_df.T_transcription[temp_df.v_translations .== p]
-        v_eff_translations = (L)./temp_df.T_translation[temp_df.v_translations .== p]
+        T_transcriptions = temp_df.T_transcription[temp_df.v_translations .== p]
+        T_translations = temp_df.T_translation[temp_df.v_translations .== p]
         fraction_T_protected = -temp_df.T_exposure[temp_df.v_translations .== p]./temp_df.T_transcription[temp_df.v_translations .== p] .+1
         fraction_T_protected_uncoupled = - temp_df.T_exposure_uncoupled[temp_df.v_translations .== p]./temp_df.T_transcription[temp_df.v_translations .== p] .+1
         push!(merged_df,
@@ -118,12 +118,12 @@ for mode in modes
                 q,
                 mean(fraction_T_protected),
                 std(fraction_T_protected),
-                mean(v_eff_translations),
-                mean(v_eff_transcriptions),
-                std(v_eff_translations),
-                std(v_eff_transcriptions),
-                mean(v_eff_translations)/p,
-                std(v_eff_translations)/p,
+                L/mean(T_translations),
+                L/mean(T_transcriptions),
+                (L/(mean(T_translations)-std(T_translations)) - L/(mean(T_translations)+std(T_translations)) )/2,
+                (L/(mean(T_transcriptions)-std(T_transcriptions)) - L/(mean(T_transcriptions)+std(T_transcriptions)) )/2,
+                (L/mean(T_translations))/p,
+                ((L/(mean(T_translations)-std(T_translations)) - L/(mean(T_translations)+std(T_translations)) )/2)/p,
             ]
         )
     end
@@ -163,7 +163,7 @@ function tex_mode(mode)
 end
 
 for mode in modes
-    t = @pgf Table({x = "v_translations", y="v_eff_transcriptions", "col sep"="comma"}, "merged_df_$(label).csv")
+    t = @pgf Table({x = "p", y="v_eff_transcriptions", "col sep"="comma"}, "merged_df_$(label).csv")
     t["discard if not={mode}{$mode}"]=nothing
     print_tex(t)
     println()

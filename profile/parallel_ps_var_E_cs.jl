@@ -90,6 +90,53 @@ push!(PGFPlotsX.CUSTOM_PREAMBLE,raw"\pgfplotsset{
         }
     }
 }")
+#### Creating DataFrame ####
+
+merged_df = DataFrame(
+    Ec = Float64[],
+    p = Float64[],
+    v_transcriptions = Float64[],
+    fraction_protected = Float64[],
+    std_fraction_exposure = Float64[],
+    v_eff_translations = Float64[],
+    v_eff_transcriptions = Float64[],
+    std_eff_translations = Float64[],
+    std_eff_transcriptions = Float64[],
+    efficiency = Float64[],
+    std_efficiency = Float64[],
+)
+
+for E_c in E_cs
+    temp_df = df[df.E_c .== E_c,:]
+    for p in ps
+        T_transcriptions = temp_df.T_transcription[temp_df.v_translations .== p]
+        T_translations = temp_df.T_translation[temp_df.v_translations .== p]
+        fractions_T_exposure = temp_df.T_exposure[temp_df.v_translations .== p]./temp_df.T_transcription[temp_df.v_translations .== p]
+        fractions_T_exposure_uncoupled = temp_df.T_exposure_uncoupled[temp_df.v_translations .== p]./temp_df.T_transcription[temp_df.v_translations .== p]
+        push!(merged_df,
+            [
+                E_c,
+                p,
+                q,
+                1-mean(fractions_T_exposure),
+                std(fractions_T_exposure),
+                L/mean(T_translations),
+                L/mean(T_transcriptions),
+                (L/(mean(T_translations)-std(T_translations)) - L/(mean(T_translations)+std(T_translations)) )/2,
+                (L/(mean(T_transcriptions)-std(T_transcriptions)) - L/(mean(T_transcriptions)+std(T_transcriptions)) )/2,
+                (L/mean(T_translations))/p,
+                ((L/(mean(T_translations)-std(T_translations)) - L/(mean(T_translations)+std(T_translations)) )/2)/p,
+            ]
+        )
+    end
+end
+
+CSV.write(
+    "fig/merged_df_$(label).csv",
+    merged_df
+)
+
+## effective velocity ##
 sort!(df,[:E_c,:v_translations])
 @pgf axis = Axis(
     {
@@ -106,57 +153,10 @@ sort!(df,[:E_c,:v_translations])
     # VLine({ dotted, red }, q*(k_unstalling_0)/(k_stalling_0+k_unstalling_0)),
 )
 
-effective_velocity_df = DataFrame(
-    E_c = Float64[],
-    v_translations = Float64[],
-    v_transcriptions = Float64[],
-    v_eff_translations = Float64[],
-    v_eff_transcriptions = Float64[],
-    std_eff_translations = Float64[],
-    std_eff_transcriptions = Float64[],
-)
 
 for E_c in E_cs
-    temp_df = df[df.E_c .== E_c,:]
-    v_eff_transcription = Float64[]
-    std_eff_translation = Float64[]
-    v_eff_translation = Float64[]
-    std_eff_transcription = Float64[]
-    for p in ps
-        v_eff_transcriptions = (L)./temp_df.T_transcription[temp_df.v_translations .== p]
-        v_eff_translations = (L)./temp_df.T_translation[temp_df.v_translations .== p]
-        push!(v_eff_transcription, mean(v_eff_transcriptions))
-        push!(std_eff_translation, std(v_eff_translations))
-        push!(v_eff_translation, mean(v_eff_translations))
-        push!(std_eff_transcription, std(v_eff_transcriptions))
-        push!(effective_velocity_df,
-            [
-                E_c,
-                p,
-                q,
-                mean(v_eff_translations),
-                mean(v_eff_transcriptions),
-                std(v_eff_translations),
-                std(v_eff_transcriptions)
-            ]
-            )
-    end
-    # plot_line = Plot(Coordinates(ps, v_eff_transcription; yerror= std_eff_transcription ))
-    # legend_line = LegendEntry(latexstring("E_+=$(E_c)"))
-    # push!(axis, plot_line )
-    # push!(axis, legend_line )
-end
-
-CSV.write(
-    "fig/effective_velocity_df_$(label).csv",
-    effective_velocity_df
-    )
-
-
-
-for E_c in E_cs
-    t = @pgf Table({x="v_translations",y="v_eff_transcriptions", "col sep"="comma"},"effective_velocity_df_$(label).csv")
-    t["discard if not={E_c}{$(E_c)}"]=nothing
+    t = @pgf Table({x="p",y="v_eff_transcriptions", "col sep"="comma"},"merged_df_$(label).csv")
+    t["discard if not={Ec}{$(E_c)}"]=nothing
     plot_line = Plot(t)
     legend_line = LegendEntry(latexstring("E_+=$(E_c)"))
     push!(axis, plot_line )
@@ -169,67 +169,20 @@ pgfsave("fig/effective_velocity_plot_$(label).tex",axis)
 
 ## ratio of protection ##
 @pgf axis = Axis(
-    {
+    {        
+        width = "3in",
+        height = "3in",
+        clip = "false",
         xlabel = "ribosome translocation rate \$p\$",
         ylabel = "mean fraction of protection \$ F_T\$",
-        grid = "major",
         legend_pos  = "north west"
     },
     # VLine({ dotted, red }, k)
 )
 
-fraction_exposure_df = DataFrame(
-    E_c = Float64[],
-    v_translations = Float64[],
-    v_transcriptions = Float64[],
-    fraction_exposure = Float64[],
-    std_fraction_exposure = Float64[],
-    fraction_exposure_uncoupled = Float64[],
-    std_fraction_exposure_uncoupled = Float64[],
-)
-
-# group data by rate of translation
 for E_c in E_cs
-    temp_df = df[df.E_c .== E_c,:]
-    fractions_T_exposure = Float64[]
-    fractions_T_exposure_uncoupled = Float64[]
-    std_fractions_T_exposure = Float64[]
-    std_fractions_T_exposure_uncoupled = Float64[]
-    for p in ps
-        T_exposures = temp_df.T_exposure[temp_df.v_translations .== p]
-        T_transcriptions = temp_df.T_transcription[temp_df.v_translations .== p]
-        T_exposures_uncoupled = temp_df.T_exposure_uncoupled[temp_df.v_translations .== p]
-        f_exposures = T_exposures./T_transcriptions
-        f_exposures_uncoupled = T_exposures_uncoupled./T_transcriptions
-        push!(fractions_T_exposure, mean(f_exposures))
-        push!(std_fractions_T_exposure, std(f_exposures))
-        push!(fractions_T_exposure_uncoupled, mean(f_exposures_uncoupled))
-        push!(std_fractions_T_exposure_uncoupled, std(f_exposures_uncoupled))
-        push!(fraction_exposure_df,
-            [
-                E_c,
-                p,
-                q,
-                mean(f_exposures),
-                std(f_exposures),
-                mean(f_exposures_uncoupled),
-                std(f_exposures_uncoupled)
-            ]
-        )
-    end
-    plot_line = Plot(Coordinates(ps, fractions_T_exposure; yerror= std_fractions_T_exposure ))
-    legend_line = LegendEntry(latexstring("E_c=$(E_c)"))
-    # push!(axis, plot_line )
-    # push!(axis, legend_line )
-end
-
-CSV.write(
-    "fig/fraction_exposure_df_$(label).csv",
-    fraction_exposure_df
-    )
-for E_c in E_cs
-    t = @pgf Table({x="v_translations",y="fraction_protected", "col sep"="comma"},"merged_df_$(label).csv")
-    t["discard if not={E_c}{$(E_c)}"]=nothing
+    t = @pgf Table({x="p",y="fraction_protected", "col sep"="comma"},"merged_df_$(label).csv")
+    t["discard if not={Ec}{$(E_c)}"]=nothing
     plot_line = Plot(t)
     legend_line = LegendEntry(latexstring("E_+=$(E_c)"))
     push!(axis, plot_line )
@@ -239,60 +192,13 @@ end
 pgfsave("fig/fraction_exposure_plot_$(label).tex",axis)
 # pgfsave("fig/fraction_exposure_plot_$(label).svg",axis)
 
-merged_df = DataFrame(
-    E_c = Float64[],
-    v_translations = Float64[],
-    v_transcriptions = Float64[],
-    fraction_protected = Float64[],
-    std_fraction_exposure = Float64[],
-    v_eff_translations = Float64[],
-    v_eff_transcriptions = Float64[],
-    std_eff_translations = Float64[],
-    std_eff_transcriptions = Float64[],
-    efficiency = Float64[],
-    std_efficiency = Float64[],
-)
-
-for E_c in E_cs
-    temp_df = df[df.E_c .== E_c,:]
-    for p in ps
-        v_eff_transcriptions = (L)./temp_df.T_transcription[temp_df.v_translations .== p]
-        v_eff_translations = (L)./temp_df.T_translation[temp_df.v_translations .== p]
-        fractions_T_exposure = temp_df.T_exposure[temp_df.v_translations .== p]./temp_df.T_transcription[temp_df.v_translations .== p]
-        fractions_T_exposure_uncoupled = temp_df.T_exposure_uncoupled[temp_df.v_translations .== p]./temp_df.T_transcription[temp_df.v_translations .== p]
-        push!(merged_df,
-            [
-                E_c,
-                p,
-                q,
-                1-mean(fractions_T_exposure),
-                std(fractions_T_exposure),
-                mean(v_eff_translations),
-                mean(v_eff_transcriptions),
-                std(v_eff_translations),
-                std(v_eff_transcriptions),
-                mean(v_eff_translations)/p,
-                std(v_eff_translations)/p,
-            ]
-        )
-    end
-end
-
-
-CSV.write(
-    "fig/merged_df_$(label).csv",
-    merged_df
-    )
-
 @pgf axis = Axis(
     {
         width = "3in",
         height = "3in",
         clip = "false",
-        width = "3.4in",
-        height = "3.4in",
         ylabel = "ribosome pushing efficiency \$ \\eta = \\bar V_{\\rm rib}/p\$",
-        xlabel = "mean fraction of protected duration",
+        xlabel = "mean protected fraction \$ F_T\$",
         colorbar,
         "colorbar style"=@pgf {width="0.2cm"}
         # "error bars/y dir=both",
@@ -312,8 +218,8 @@ CSV.write(
 # end
 
 for E_c in E_cs
-    t = @pgf Table({x="fraction_protected",y="efficiency", "col sep"="comma", "meta"="v_translations"},"merged_df_$(label).csv")
-    t["discard if not={E_c}{$(E_c)}"]=nothing
+    t = @pgf Table({x="fraction_protected",y="efficiency", "col sep"="comma", "meta"="p"},"merged_df_$(label).csv")
+    t["discard if not={Ec}{$(E_c)}"]=nothing
     plot_line = @pgf PlotInc({"scatter", "scatter src"="explicit"},t)
     legend_line = LegendEntry(latexstring("E_+=$(E_c)"))
     push!(axis, plot_line )

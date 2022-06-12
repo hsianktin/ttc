@@ -76,144 +76,26 @@ using LaTeXStrings
 ################
 ##  Plotting  ##
 ################
+push!(PGFPlotsX.CUSTOM_PREAMBLE,raw"\pgfplotsset{
+    discard if not/.style 2 args={
+        x filter/.code={
+            \edef\tempa{\thisrow{#1}}
+            \edef\tempb{#2}
+            \ifx\tempa\tempb
+            \else
+                \def\pgfmathresult{inf}
+            \fi
+        }
+    }
+}")
 
-
-## effective velocity ##
-sort!(df,[:Eᵦ,:v_translations])
-@pgf axis = Axis(
-    {
-        xlabel = "binding energy between the ribosome and RNAP \$E_{\\beta}\$",
-        ylabel = "effective transcript. velocity \$\\bar{V}_{\\rm RNAP} \$",
-        grid = "major",
-        "error bars/y dir=both",
-        "error bars/y explicit",
-        legend_pos  = "north west"
-    },
-    VLine({ dotted, red }, q*(k_unstalling_0)/(k_stalling_0+k_unstalling_0)),
-)
-
-effective_velocity_df = DataFrame(
-    Eᵦ = Float64[],
-    v_translations = Float64[],
-    v_transcriptions = Float64[],
-    v_eff_translations = Float64[],
-    v_eff_transcriptions = Float64[],
-    std_eff_translations = Float64[],
-    std_eff_transcriptions = Float64[],
-)
-
-for p in ps
-    temp_df = df[df.v_translations .== p,:]
-    v_eff_transcription = Float64[]
-    std_eff_translation = Float64[]
-    v_eff_translation = Float64[]
-    std_eff_transcription = Float64[]
-    for Eᵦ in Eᵦs
-        v_eff_transcriptions = (L)./temp_df.T_transcription[temp_df.Eᵦ .== Eᵦ]
-        v_eff_translations = (L)./temp_df.T_translation[temp_df.Eᵦ .== Eᵦ]
-        push!(v_eff_transcription, mean(v_eff_transcriptions))
-        push!(std_eff_translation, std(v_eff_translations))
-        push!(v_eff_translation, mean(v_eff_translations))
-        push!(std_eff_transcription, std(v_eff_transcriptions))
-        push!(effective_velocity_df,
-            [
-                Eᵦ,
-                p,
-                q,
-                mean(v_eff_translations),
-                mean(v_eff_transcriptions),
-                std(v_eff_translations),
-                std(v_eff_transcriptions)
-            ]
-            )
-    end
-    plot_line = Plot(Coordinates(Eᵦs, v_eff_transcription; yerror= std_eff_transcription ))
-    legend_line = LegendEntry(latexstring("p=$p"))
-    push!(axis, plot_line )
-    push!(axis, legend_line )
-end
-
-CSV.write(
-    "fig/effective_velocity_df_$(label).csv",
-    effective_velocity_df
-    )
-
-pgfsave("fig/effective_velocity_plot_$(label).tex",axis)
-pgfsave("fig/effective_velocity_plot_$(label).svg",axis)
-    
-
-## ratio of protection ##
-@pgf axis = Axis(
-    {
-        xlabel = "binding energy between the ribosome and RNAP \$E_{\\beta}\$",
-        ylabel = "mean proteccted fraction",
-        grid = "major",
-        "error bars/y dir=both",
-        "error bars/y explicit",
-        legend_pos  = "north west"
-    },
-    # VLine({ dotted, red }, k)
-)
-
-fraction_protected_df = DataFrame(
-    Eᵦ = Float64[],
-    v_translations = Float64[],
-    v_transcriptions = Float64[],
-    fraction_protected = Float64[],
-    std_fraction_exposure = Float64[],
-    fraction_protected_uncoupled = Float64[],
-    std_fraction_exposure_uncoupled = Float64[],
-)
-
-# group data by rate of translation
-for p in ps
-    temp_df = df[df.v_translations .== p,:]
-    fractions_T_exposure = Float64[]
-    fractions_T_exposure_uncoupled = Float64[]
-    std_fractions_T_exposure = Float64[]
-    std_fractions_T_exposure_uncoupled = Float64[]
-    for Eᵦ in Eᵦs
-        T_exposures = temp_df.T_exposure[temp_df.Eᵦ .== Eᵦ]
-        T_transcriptions = temp_df.T_transcription[temp_df.Eᵦ .== Eᵦ]
-        T_exposures_uncoupled = temp_df.T_exposure_uncoupled[temp_df.Eᵦ .== Eᵦ]
-        f_exposures = T_exposures./T_transcriptions
-        f_exposures_uncoupled = T_exposures_uncoupled./T_transcriptions
-        push!(fractions_T_exposure, mean(f_exposures))
-        push!(std_fractions_T_exposure, std(f_exposures))
-        push!(fractions_T_exposure_uncoupled, mean(f_exposures_uncoupled))
-        push!(std_fractions_T_exposure_uncoupled, std(f_exposures_uncoupled))
-        push!(fraction_protected_df,
-            [
-                Eᵦ,
-                p,
-                q,
-                1 - mean(f_exposures),
-                std(f_exposures),
-                1 - mean(f_exposures_uncoupled),
-                std(f_exposures_uncoupled)
-            ]
-        )
-    end
-    plot_line = Plot(Coordinates(Eᵦs, -fractions_T_exposure .+ 1; yerror= std_fractions_T_exposure ))
-    legend_line = LegendEntry(latexstring("p=$p"))
-    push!(axis, plot_line )
-    push!(axis, legend_line )
-end
-
-CSV.write(
-    "fig/fraction_protected_df_$(label).csv",
-    fraction_protected_df
-    )
-# savefig in svg and tex format
-pgfsave("fig/fraction_protected_plot_$(label).tex",axis)
-pgfsave("fig/fraction_protected_plot_$(label).svg",axis)
-
+#### Creating DataFrame ####
 merged_df = DataFrame(
     Eᵦ = Float64[],
-    v_translations = Float64[],
+    p = Float64[],
     v_transcriptions = Float64[],
     fraction_protected = Float64[],
-    std_fraction_exposure = Float64[],
+    std_fraction_protected = Float64[],
     v_eff_translations = Float64[],
     v_eff_transcriptions = Float64[],
     std_eff_translations = Float64[],
@@ -225,8 +107,8 @@ merged_df = DataFrame(
 for p in ps
     temp_df = df[df.v_translations .== p,:]
     for Eᵦ in Eᵦs
-        v_eff_transcriptions = (L)./temp_df.T_transcription[temp_df.Eᵦ .== Eᵦ]
-        v_eff_translations = (L)./temp_df.T_translation[temp_df.Eᵦ .== Eᵦ]
+        T_transcriptions = temp_df.T_transcription[temp_df.Eᵦ .== Eᵦ]
+        T_translations = temp_df.T_translation[temp_df.Eᵦ .== Eᵦ]
         fractions_T_exposure = temp_df.T_exposure[temp_df.Eᵦ .== Eᵦ]./temp_df.T_transcription[temp_df.Eᵦ .== Eᵦ]
         fractions_T_exposure_uncoupled = temp_df.T_exposure_uncoupled[temp_df.Eᵦ .== Eᵦ]./temp_df.T_transcription[temp_df.Eᵦ .== Eᵦ]
         push!(merged_df,
@@ -236,12 +118,12 @@ for p in ps
                 q,
                 1-mean(fractions_T_exposure),
                 std(fractions_T_exposure),
-                mean(v_eff_translations),
-                mean(v_eff_transcriptions),
-                std(v_eff_translations),
-                std(v_eff_transcriptions),
-                mean(v_eff_translations)/p,
-                std(v_eff_translations)/p,
+                L/mean(T_translations),
+                L/mean(T_transcriptions),
+                (L/(mean(T_translations)-std(T_translations)) - L/(mean(T_translations)+std(T_translations)) )/2,
+                (L/(mean(T_transcriptions)-std(T_transcriptions)) - L/(mean(T_transcriptions)+std(T_transcriptions)) )/2,
+                (L/mean(T_translations))/p,
+                ((L/(mean(T_translations)-std(T_translations)) - L/(mean(T_translations)+std(T_translations)) )/2)/p,
             ]
         )
     end
@@ -252,13 +134,72 @@ CSV.write(
     "fig/merged_df_$(label).csv",
     merged_df
     )
+## effective velocity ##
+sort!(df,[:Eᵦ,:v_translations])
+@pgf axis = Axis(
+    {
+        width = "3in",
+        height = "3in",
+        clip = "false",
+        xlabel = "binding energy between the ribosome and RNAP \$E_{\\beta}\$",
+        ylabel = "effective transcript. velocity \$\\bar{V}_{\\rm RNAP} \$",
+        # grid = "major",
+        "error bars/y dir=both",
+        "error bars/y explicit",
+        legend_pos  = "north west"
+    },
+    # VLine({ dotted, red }, q*(k_unstalling_0)/(k_stalling_0+k_unstalling_0)),
+)
 
+for p in ps
+    t = @pgf Table({x = "Eᵦ", y = y="v_eff_transcriptions", "col sep"="comma"}, "merged_df_$(label).csv")
+    t["discard if not={p}{$p}"]=nothing
+    plot_line = Plot(t)
+    legend_line = LegendEntry("\$p\$=$p")
+    push!(axis, plot_line)
+    push!(axis, legend_line)
+end
+
+pgfsave("fig/effective_velocity_plot_$(label).tex",axis)
+    
+
+## ratio of protection ##
+@pgf axis = Axis(
+    {
+        width = "3in",
+        height = "3in",
+        clip = "false",
+        xlabel = "binding energy between the ribosome and RNAP \$E_{\\beta}\$",
+        ylabel = "mean proteccted fraction \$F_T\$",
+        # grid = "major",
+        # "error bars/y dir=both",
+        # "error bars/y explicit",
+        legend_pos  = "north west"
+    },
+    # VLine({ dotted, red }, k)
+)
+
+# group data by rate of translation
+for p in ps
+    t = @pgf Table({x = "Eᵦ", y = y="fraction_protected", "col sep"="comma"}, "merged_df_$(label).csv")
+    t["discard if not={p}{$p}"]=nothing
+    plot_line = Plot(t)
+    legend_line = LegendEntry("\$p\$=$p")
+    push!(axis, plot_line )
+    push!(axis, legend_line )
+end
+
+# savefig in svg and tex format
+pgfsave("fig/fraction_protected_plot_$(label).tex",axis)
+
+# merged plot
 @pgf axis = Axis(
     {
         width = "3.4in",
         height = "3.4in",
-        ylabel = "ribosome pushing efficiency \$ \\eta = \\bar V_{\\rm rib}/p\$",
-        xlabel = "mean fraction of protected duration",
+        clip = "false",
+        ylabel = "ribosome pushing efficiency \$ \\eta = \\overline V_{\\rm rib}/p\$",
+        xlabel = "mean proteccted fraction \$F_T\$",
         # "error bars/y dir=both",
         # "error bars/y explicit",
         # "error bars/x dir=both",
@@ -267,10 +208,7 @@ CSV.write(
 )
 
 for p in ps
-    temp_df = merged_df[merged_df.v_translations .== p,:]
-    # plot_line = Plot(Coordinates(temp_df.efficiency, temp_df.fraction_protected; yerror= temp_df.std_fraction_exposure, xerror = temp_df.std_efficiency ))
-    plot_line = Plot(Coordinates( temp_df.fraction_protected,temp_df.efficiency))
-    legend_line = LegendEntry(latexstring("p=$p"))
+    t = @pgf Table({x = "fraction_protected", y = "efficiency", "col sep"="comma"}, "merged_df_$(label).csv")
     push!(axis, plot_line )
     push!(axis, legend_line )
 end
