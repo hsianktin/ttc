@@ -64,8 +64,8 @@ std_eff_translation = Float64[]
 v_eff_translation = Float64[]
 std_eff_transcription = Float64[]
 for Eᵦ in Eᵦs
-    T_transcriptions = df.T_transcription[df.Eᵦ == Eᵦ]
-    T_translations = df.T_translation[df.Eᵦ == Eᵦ]
+    T_transcriptions = df.T_transcription[df.Eᵦ .== Eᵦ]
+    T_translations = df.T_translation[df.Eᵦ .== Eᵦ]
     push!(v_eff_transcription, L/mean(T_transcriptions))
     push!(std_eff_transcription, (L/(mean(T_transcriptions)-std(T_transcriptions)) - L/(mean(T_transcriptions)+std(T_transcriptions)) )/2)
     push!(v_eff_translation, L/mean(T_translations))

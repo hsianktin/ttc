@@ -209,9 +209,11 @@ pgfsave("fig/fraction_protected_plot_$(label).tex",axis)
 
 for p in ps
     t = @pgf Table({x = "fraction_protected", y = "efficiency", "col sep"="comma"}, "merged_df_$(label).csv")
+    t["discard if not={p}{$p}"]=nothing
+    plot_line = Plot(t)
+    legend_line = LegendEntry("\$p\$=$p")
     push!(axis, plot_line )
     push!(axis, legend_line )
 end
 axis
 pgfsave("fig/merged_plot_$(label).tex",axis)
-pgfsave("fig/merged_plot_$(label).svg",axis)

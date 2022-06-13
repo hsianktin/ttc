@@ -169,3 +169,40 @@ for argument in arguments
 end
 
 map(run,cmds)
+
+#################
+# Figure 2 #
+#################
+cmds = []
+push!(cmds,`julia ttc_simu_run.jl E_cs false 2.0`)
+push!(cmds,`julia ttc_simu_parallel_run.jl ps_var_E_cs false`)
+map(run,cmds)
+
+#################
+# Figure 3 a - c#
+################
+
+cmds = []
+arguments = [
+    "E_bs_var_ps",
+]
+
+for argument in arguments
+    cmd = `julia ttc_simu_parallel_run.jl $argument false`
+    push!(cmds,cmd)
+end
+
+map(run,cmds)
+
+
+#################
+# Figure 3 d - f#
+################
+
+#################
+# Figure 4 a - c#
+################
+cmds = []
+push!(cmds,`julia ttc_simu_parallel_run.jl alphas_var_ps false`)
+push!(cmds,`julia ttc_simu_parallel_run.jl variant false`)
+run.(cmds)

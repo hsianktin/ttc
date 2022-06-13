@@ -186,7 +186,7 @@ pgfsave("fig/effective_velocity_plot_$(label).tex",axis)
         height = "3in",
         clip = "false",
         xlabel = "ribosome translocation rate \$p\$",
-        ylabel = "mean fraction of protection \$F_T\$",
+        ylabel = "mean protected fraction \$F_T\$",
         # grid = "major",
         # "error bars/y dir=both",
         # "error bars/y explicit",

@@ -65,8 +65,8 @@ std_eff_translation = Float64[]
 v_eff_translation = Float64[]
 std_eff_transcription = Float64[]
 for k_couple in k_couples
-    T_transcriptions = df.T_transcription[df.k_couple == k_couple]
-    T_translations = df.T_translation[df.k_couple == k_couple]
+    T_transcriptions = df.T_transcription[df.k_couple .== k_couple]
+    T_translations = df.T_translation[df.k_couple .== k_couple]
     push!(v_eff_transcription, L/mean(T_transcriptions))
     push!(std_eff_transcription, (L/(mean(T_transcriptions)-std(T_transcriptions)) - L/(mean(T_transcriptions)+std(T_transcriptions)) )/2)
     push!(v_eff_translation, L/mean(T_translations))
