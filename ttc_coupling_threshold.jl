@@ -36,7 +36,7 @@ plot_df = DataFrame(order_parameter=W, coupling_coeff=Z)
 CSV.write("fig/threshold_coupling_coeff.csv", plot_df)
 
 # using PGFPlotsX to generate heatmap instead of Plots
-
+t = @pgf Table({x = "order_parameter", y = "coupling_coeff", "col sep"="comma"}, "threshold_coupling_coeff.csv")
 @pgf axis = SemiLogXAxis(
     {
         xlabel = "\$p/\\bar q\$",
@@ -48,14 +48,13 @@ CSV.write("fig/threshold_coupling_coeff.csv", plot_df)
             scatter,
             "only_marks",
         },
-        Coordinates(W,Z)
+        t
     )
 )
 # heatmap([i for i in 10:90], [i for i in 10:90],z,size=(500,450))
 # xlabel!("v_transcription")
 # ylabel!("v_translation")
 # title!("mean coupling coefficient coupling_$(Eᵦ)")
-pgfsave("fig/threshold_coupling_coeff.svg",axis)
 pgfsave("fig/threshold_coupling_coeff.tex",axis)
 
 ###########################################
@@ -73,6 +72,7 @@ using LaTeXStrings, Statistics
 Z = Float64[]
 Z₊ = Float64[]  
 Z₋ = Float64[]
+δZ = Float64[]
 W = Float64[]
 # z = OffsetArray(z,10:90,10:90)
 
@@ -97,20 +97,23 @@ for x in [ps[i] for i in 1:length(ps)], y in [qs[i] for i in 1:length(qs)]
     temp_df = temp_df_0[temp_df_0.v_transcriptions .== y,:]
     data_array = [1 - temp_df.T_exposure[i]/temp_df.T_transcription[i] for i in 1:length(temp_df.T_transcription)]
     z = mean(data_array)
+    δz = std(data_array)
     z₊ = quantile(data_array,0.75) - z
     z₋ = z - quantile(data_array,0.25) 
     push!(W,x/ȳ)
     push!(Z,z)
     push!(Z₊,z₊)
     push!(Z₋,z₋)
+    push!(δZ,δz)
 end
 
 # save the data of order_parameter=W, coupling_coeff=Z to a csv file in fig/threshold_coupling_coeff.csv
-plot_df = DataFrame(order_parameter=W, coupling_coeff=Z, q_plus = Z₊, q_minus = Z₋)
+plot_df = DataFrame(order_parameter=W, coupling_coeff=Z, q_plus = Z₊, q_minus = Z₋, δq = δZ)
 CSV.write("fig/threshold_f_T.csv", plot_df)
 
 sort!(plot_df,[:order_parameter])
-
+t = @pgf Table({x = "order_parameter", y = "coupling_coeff", y_error = "δq", "col sep"="comma"}, "threshold_f_T.csv")
+print_tex(t)
 @pgf axis = SemiLogXAxis(
     {
         xlabel = "\$p/\\bar q\$",
@@ -124,10 +127,10 @@ sort!(plot_df,[:order_parameter])
             mark_size=1,
             color="red",
             # "no marks",
-            # "error bars/y dir=both",
-            # "error bars/y explicit" ,
+            "error bars/y dir=both",
+            "error bars/y explicit" ,
         },
-        Coordinates(plot_df.order_parameter, plot_df.coupling_coeff; yerrorplus=plot_df.q_plus, yerrorminus=plot_df.q_minus)
+        t
     )
 )
 # heatmap([i for i in 10:90], [i for i in 10:90],z,size=(500,450))
@@ -135,7 +138,32 @@ sort!(plot_df,[:order_parameter])
 # ylabel!("v_translation")
 # title!("mean coupling coefficient coupling_$(Eᵦ)")
 pgfsave("fig/threshold_f_T.tex",axis)
-pgfsave("fig/threshold_f_T.svg",axis)
+
+############################
+### mean vs std ############
+############################
+t = @pgf Table({x = "coupling_coeff", y = "δq",  "col sep"="comma"}, "threshold_f_T.csv")
+
+@pgf axis = Axis(
+    {
+        xlabel = "\$\\overline{F}_T\$",
+        ylabel = "\$\\textrm{std} F_T\$",
+        # grid = "major",
+    },
+    Plot(
+        {
+            only_marks,
+            mark = "o",
+            mark_size=1,
+            color="red",
+            # "no marks",
+            # "error bars/y dir=both",
+            # "error bars/y explicit" ,
+        },
+        t
+    )
+)
+pgfsave("fig/mean_std_F_T.tex",axis)
 
 ############################
 ##### single plot with q = 30
@@ -169,7 +197,7 @@ plot_df = DataFrame(order_parameter=W, coupling_coeff=Z, q_plus = Z₊, q_minus 
 CSV.write("fig/scatter_f_T_p.csv", plot_df)
 
 sort!(plot_df,[:order_parameter])
-
+t = @pgf Table({x = "order_parameter", y = "coupling_coeff", "col sep"="comma"}, "scatter_f_T_p.csv")
 @pgf axis = Axis(
     {
         xlabel = "\$p/\\bar q\$",
@@ -182,9 +210,6 @@ sort!(plot_df,[:order_parameter])
             mark="o",
             mark_size=1,
             color="red",
-            # "no marks",
-            "error bars/y dir=both",
-            "error bars/y explicit" ,
         },
         Coordinates(plot_df.order_parameter, plot_df.coupling_coeff; yerrorplus=plot_df.q_plus, yerrorminus=plot_df.q_minus)
     )
@@ -194,4 +219,3 @@ sort!(plot_df,[:order_parameter])
 # ylabel!("v_translation")
 # title!("mean coupling coefficient coupling_$(Eᵦ)")
 pgfsave("fig/scatter_f_T_p.tex",axis)
-pgfsave("fig/scatter_f_T_p.svg",axis)

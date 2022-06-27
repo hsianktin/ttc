@@ -44,26 +44,20 @@ else
     end
     CSV.write("simu_$(label).csv",df)
 end
-using LaTeXStrings
+include("ttc_approx.jl")
 
-# plot the effective velocity
-sort!(df,[:v_translations])
-@pgf axis = Axis(
-    {
-        xlabel = "ribosome translocation rate \$p\$",
-        ylabel = "effective velocity",
-        grid = "major",
-        "error bars/y dir=both",
-        "error bars/y explicit",
-        legend_pos  = "north west"
-    },
-    VLine({ dotted, red }, k)
-)
 # group data by rate of translation
 v_eff_transcription = Float64[]
 std_eff_translation = Float64[]
 v_eff_translation = Float64[]
 std_eff_transcription = Float64[]
+fractions_T_protected = Float64[]
+fractions_T_protected_uncoupled = Float64[]
+std_fractions_T_protected = Float64[]
+std_fractions_T_protected_uncoupled = Float64[]
+v_eff_est = Float64[]
+F_T_est = Float64[]
+
 for p in ps
     T_transcriptions = df.T_transcription[df.v_translations .== p]
     T_translations = df.T_translation[df.v_translations .== p]
@@ -71,63 +65,85 @@ for p in ps
     push!(std_eff_transcription, (L/(mean(T_transcriptions)-std(T_transcriptions)) - L/(mean(T_transcriptions)+std(T_transcriptions)) )/2)
     push!(v_eff_translation, L/mean(T_translations))
     push!(std_eff_translation, (L/(mean(T_translations)-std(T_translations)) - L/(mean(T_translations)+std(T_translations)) )/2)
+    T_protecteds = df.T_exposure[df.v_translations .== p]
+    T_transcriptions = df.T_transcription[df.v_translations .== p]
+    T_protecteds_uncoupled = df.T_exposure_uncoupled[df.v_translations .== p]
+    f_protecteds =T_protecteds ./ T_transcriptions
+    f_protecteds_uncoupled = T_protecteds_uncoupled ./ T_transcriptions
+    push!(fractions_T_protected, 1-mean(f_protecteds))
+    push!(std_fractions_T_protected, std(f_protecteds))
+    push!(fractions_T_protected_uncoupled, mean(f_protecteds_uncoupled))
+    push!(std_fractions_T_protected_uncoupled, std(f_protecteds_uncoupled))
+    push!(v_eff_est, V̄(p,k,k_couple,k_unstalling_0,k_stalling_0,Eᵦ,E_c,ℓ))
+    push!(F_T_est, EFₜ(p,k,k_couple,k_unstalling_0,k_stalling_0,Eᵦ,E_c,ℓ,27))
 end
-plot_line = Plot(Coordinates(ps, v_eff_transcription; yerror= std_eff_transcription ))
+
+plot_df = DataFrame(
+    p=ps, 
+    v_eff_transcription=v_eff_transcription, 
+    std_eff_transcription=std_eff_transcription, 
+    v_eff_translation=v_eff_translation, 
+    std_eff_translation=std_eff_translation, 
+    fractions_T_protected=fractions_T_protected,
+    std_fractions_T_protected=std_fractions_T_protected,
+    fractions_T_protected_uncoupled=fractions_T_protected_uncoupled,
+    std_fractions_T_protected_uncoupled=std_fractions_T_protected_uncoupled,
+    v_eff_est=v_eff_est,
+    F_T_est=F_T_est
+    )
+CSV.write("fig/simu_df_$(label).csv",plot_df)
+
+
+using LaTeXStrings
+# plot the effective velocity
+sort!(df,[:v_translations])
+@pgf axis = Axis(
+    {   
+        width = "3in",
+        height = "3in",
+        xlabel = "ribosome translocation rate \$p\$",
+        ylabel = "effective velocity {\\color{red}\$\\overline V_{\\rm RNAP}\$}, {\\color{blue}\$\\overline V_{\\rm rib}\$}, \$\\overline V_{\\rm est}\$",
+        "error bars/y dir=both",
+        "error bars/y explicit",
+        legend_pos  = "south east",
+    },
+    VLine({ dotted, red }, k*(k_unstalling_0)/(k_stalling_0+k_unstalling_0))
+)
+t = @pgf Table({
+    x = "p",
+    y = "v_eff_transcription",
+    col_sep = "comma"},"simu_df_$(label).csv")
+print_tex(t)
+plot_line = @pgf Plot({color="red",mark="o",only_marks},t)
 legend_line = LegendEntry("transcription")
 push!(axis, plot_line )
 push!(axis, legend_line )
-plot_line = Plot(Coordinates(ps, v_eff_translation; yerror = std_eff_translation))
+t = @pgf Table({
+    x = "p",
+    y = "v_eff_translation",
+    col_sep = "comma"},"simu_df_$(label).csv")
+plot_line = @pgf Plot({color="blue",mark="square",only_marks},t)
 legend_line = LegendEntry("translation")
+push!(axis, plot_line )
+push!(axis, legend_line )
+t = @pgf Table({
+    x = "p",
+    y = "v_eff_est",
+    col_sep = "comma"},"simu_df_$(label).csv")
+plot_line = @pgf Plot({color="black",no_marks,restrict_x_to_domain="$(k*(k_unstalling_0)/(k_stalling_0+k_unstalling_0)):$(maximum(ps))"},t)
+legend_line = LegendEntry("est")
 push!(axis, plot_line )
 push!(axis, legend_line )
 
 pgfsave("fig/effective_velocity_plot_$(label).tex",axis)
-pgfsave("fig/effective_velocity_plot_$(label).svg",axis)
-
-# plot the mean and std of the T_exposure
-# sort!(df,[:v_translations])
-@pgf axis = Axis(
-    {
-        xlabel = "ribosome translocation rate \$p\$",
-        ylabel = "duration / s",
-        grid = "major",
-        "error bars/y dir=both",
-        "error bars/y explicit",
-        legend_pos  = "north west"
-    },
-    # VLine({ dotted, red }, k)
-)
-# group data by rate of translation
-mean_T_exposure = Float64[]
-std_T_exposure = Float64[]
-mean_T_exposure_uncoupled = Float64[]
-std_T_exposure_uncoupled = Float64[]
-for p in ps
-    T_exposures = df.T_exposure[df.v_translations .== p]
-    T_exposures_uncoupled = df.T_exposure_uncoupled[df.v_translations .== p]
-    push!(mean_T_exposure, mean(T_exposures))
-    push!(std_T_exposure, std(T_exposures))
-    push!(mean_T_exposure_uncoupled, mean(T_exposures_uncoupled))
-    push!(std_T_exposure_uncoupled, std(T_exposures_uncoupled))
-end
-plot_line = Plot(Coordinates(ps, mean_T_exposure; yerror= std_T_exposure ))
-legend_line = LegendEntry("exposure duration")
-push!(axis, plot_line )
-push!(axis, legend_line )
-plot_line = Plot(Coordinates(ps, mean_T_exposure_uncoupled; yerror = std_T_exposure_uncoupled))
-legend_line = LegendEntry("exposure and uncoupled duration")
-push!(axis, plot_line )
-push!(axis, legend_line )
-
-pgfsave("fig/exposure_duration_plot_$(label).tex",axis)
-pgfsave("fig/exposure_duration_plot_$(label).svg",axis)
+# pgfsave("fig/effective_velocity_plot_$(label).svg",axis)
 
 # plot the fraction of T_exposure in T_transcription
 # sort!(df,[:v_translations])
 @pgf axis = Axis(
     {
         xlabel = "ribosome translocation rate \$p\$",
-        ylabel = "fraction",
+        ylabel = "protected fraction \$ F_T\$",
         grid = "major",
         "error bars/y dir=both",
         "error bars/y explicit",
@@ -135,58 +151,21 @@ pgfsave("fig/exposure_duration_plot_$(label).svg",axis)
     },
     # VLine({ dotted, red }, k)
 )
-# group data by rate of translation
-fractions_T_exposure = Float64[]
-fractions_T_exposure_uncoupled = Float64[]
-std_fractions_T_exposure = Float64[]
-std_fractions_T_exposure_uncoupled = Float64[]
-for p in ps
-    T_exposures = df.T_exposure[df.v_translations .== p]
-    T_transcriptions = df.T_transcription[df.v_translations .== p]
-    T_exposures_uncoupled = df.T_exposure_uncoupled[df.v_translations .== p]
-    f_exposures =T_exposures ./ T_transcriptions
-    f_exposures_uncoupled = T_exposures_uncoupled ./ T_transcriptions
-    push!(fractions_T_exposure, mean(f_exposures))
-    push!(std_fractions_T_exposure, std(f_exposures))
-    push!(fractions_T_exposure_uncoupled, mean(f_exposures_uncoupled))
-    push!(std_fractions_T_exposure_uncoupled, std(f_exposures_uncoupled))
-end
-plot_line = Plot(Coordinates(ps, fractions_T_exposure; yerror= std_fractions_T_exposure ))
-legend_line = LegendEntry("exposure fraction")
+t = @pgf Table({
+    x = "p",
+    y = "fractions_T_protected",
+    col_sep = "comma"},"simu_df_$(label).csv")
+
+plot_line = @pgf Plot({color="blue",only_marks},t)
 push!(axis, plot_line )
-push!(axis, legend_line )
-plot_line = Plot(Coordinates(ps, fractions_T_exposure_uncoupled; yerror = std_fractions_T_exposure_uncoupled))
-legend_line = LegendEntry("exposure and uncoupled fraction")
+t = @pgf Table({
+    x = "p",
+    y = "F_T_est",
+    col_sep = "comma"},"simu_df_$(label).csv")
+
+plot_line = @pgf PlotInc({restrict_x_to_domain="$(k*(k_unstalling_0)/(k_stalling_0+k_unstalling_0)):$(maximum(ps))"},t)
 push!(axis, plot_line )
 push!(axis, legend_line )
 
 pgfsave("fig/exposure_fraction_plot_$(label).tex",axis)
-pgfsave("fig/exposure_fraction_plot_$(label).svg",axis)
 
-# plot the mean and std of the mean_distance
-# sort!(df,[:v_translations])
-@pgf axis = Axis(
-    {
-        xlabel = "ribosome translocation rate \$p\$",
-        ylabel = "distance / codon",
-        grid = "major",
-        "error bars/y dir=both",
-        "error bars/y explicit",
-        legend_pos  = "north west"
-    },
-    # VLine({ dotted, red }, k)
-)
-# group data by rate of translation
-mean_distances = Float64[]
-std_distances = Float64[]
-for p in ps
-    distances = df.mean_distance[df.v_translations .== p]
-    push!(mean_distances, mean(distances))
-    push!(std_distances, std(distances))
-end
-plot_line = Plot(Coordinates(ps, mean_distances; yerror= std_distances ))
-# legend_line = LegendEntry("mean distance")
-push!(axis, plot_line )
-
-pgfsave("fig/mean_distance_plot_$(label).tex",axis)
-pgfsave("fig/mean_distance_plot_$(label).svg",axis)
