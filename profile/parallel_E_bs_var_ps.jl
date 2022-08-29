@@ -49,7 +49,7 @@ else
         E_c = Float64[], 
         x₀ = Int[], 
         y₀ = Int[], 
-        s₀ = Int[], 
+        s = Int[], 
         p₀ = Int[], 
         type = String[], 
         T_transcription = Float64[],
@@ -89,6 +89,46 @@ push!(PGFPlotsX.CUSTOM_PREAMBLE,raw"\pgfplotsset{
     }
 }")
 
+using StatsBase, LinearAlgebra
+using Pipe
+df_corr = @pipe df |> 
+groupby(_, [:v_translations, :Eᵦ]) |>
+combine(_,
+    [:T_transcription, :T_translation] => (
+        (X,Y) -> (corr = pdf_corr(X,Y))
+        ) => :corr 
+    ) |>  
+    sort(_, [:v_translations, :Eᵦ]) |> rename(_, :v_translations => :p)
+CSV.write(
+    "fig/pdf_corr_df_$(label).csv",
+    df_corr
+    )
+@pgf axis = Axis(
+    {
+        width = "3in",
+        height = "3in",
+        clip = "false",
+        xlabel = "Interaction energy \$E_{a}\$",
+        ylabel = "correlation between \$\\rho_{{\\mathrm{ribosome}}}\$ and \$\\rho_{{\\mathrm{RNAP}}}\$",
+        # grid = "major",
+        "error bars/y dir=both",
+        "error bars/y explicit",
+        legend_pos  = "south east"
+    },
+    # VLine({ dotted, red }, q*(k_unstalling_0)/(k_stalling_0+k_unstalling_0)),
+)
+
+for Eᵦ in [-2,3,10]
+    t = @pgf Table({x = "p", y = "corr", "col sep"="comma"}, "pdf_corr_df_$(label).csv")
+    t["discard if not={Eᵦ}{$(convert(Float64,Eᵦ))}"]=nothing
+    plot_line = Plot(t)
+    legend_line = LegendEntry("\$E_{a}\$=$Eᵦ")
+    push!(axis, plot_line)
+    push!(axis, legend_line)
+end
+
+pgfsave("fig/pdf_corr_plot_$(label).tex",axis)
+        
 #### Creating DataFrame ####
 merged_df = DataFrame(
     Eᵦ = Float64[],

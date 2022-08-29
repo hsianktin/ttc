@@ -20,14 +20,4 @@ else
     println("Usage: ttc_simu_parallel_run.jl [profile_name]")
 end
 
-A = [1,2,3]
-push!(A, 4)
-using Plots
-x = [i for i in 1:5]
-y = [i for i in 1:5]
-plot(x,y)
-plot!(2x,y)
-
-x .+ 1
-x .- 1
 

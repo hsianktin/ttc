@@ -185,7 +185,7 @@ if !plot_flag
         E_c = Float64[], 
         x₀ = Int[], 
         y₀ = Int[], 
-        s₀ = Int[], 
+        s = Int[], 
         p₀ = Int[], 
         type = String[], 
         T_transcription = Float64[],
@@ -204,16 +204,17 @@ if !plot_flag
         push!(v_unstalls, 0.0) # after termination, no further transcription
 
         # track the duration of distances larger than a given value d
-        X = Float64[]
-        Y = Float64[]
-        T = Float64[]
-        P = Int[]
-        C = Int[]
+        local X = Float64[]
+        local Y = Float64[]
+        local T = Float64[]
+        local P = Int[]
+        local C = Int[]
         push!(X,x)
         push!(Y,y)
         push!(T,t)
         push!(C,s)
         push!(P,p)
+        s₁ = 0
         while x == 0 && y < L
             global x,y,s,p,t = update(x,y,s,p,t,type)
             push!(X,x)
@@ -232,9 +233,11 @@ if !plot_flag
                 push!(C,s)
                 push!(P,p)
             end
-            T_transcription = t
+            local T_transcription = t
+            s₁ = s
         else
-            T_transcription = t
+            s₁ = s
+            local T_transcription = t
             while x == 0
                 global x,y,s,p,t = update(x,y,s,p,t,type)
                 push!(X,x)
@@ -254,7 +257,7 @@ if !plot_flag
             push!(C,s)
             push!(P,p)
         end
-        T_translation = t #- T_0
+        local T_translation = t #- T_0
 
         function exposure_duration(X,Y,T,d)
             # calculate the duration at which (Y-X)> d
@@ -301,8 +304,8 @@ if !plot_flag
             return Dδt / δt
         end
 
-        T_exposure = exposure_duration(X,Y,T,d)
-        T_exposure_uncoupled = uncoupled_exposure_duration(X,Y,T,d,C)
+        local T_exposure = exposure_duration(X,Y,T,d)
+        local T_exposure_uncoupled = uncoupled_exposure_duration(X,Y,T,d,C)
 
         push!(
             df, 
@@ -321,7 +324,7 @@ if !plot_flag
                 E_c, 
                 x₀,
                 y₀, 
-                s₀, 
+                s₁, # recording the state of coupling at the end of the simulation
                 p₀, 
                 type, 
                 T_transcription, 

@@ -96,7 +96,7 @@ end
 ∑(x) = sum(x)
 μ = ∑([(L-x)*P[x,s,p] for x in 1:L, s in 0:1, p in 0:1])
 σ² = ∑([(L-x)^2*P[x,s,p] for x in 1:L, s in 0:1, p in 0:1]) - μ^2
-μ_c = ∑([s*P[x,s,p] for x in 1:L, s in 0:1, p in 0:1])
+μ_c = ∑([s*P[x,s,p] for x in 1:L, s in 0:1, p in 0:1]) # coupling_coeff
 
 if plot_flag == 0
 # in order to adapt for multi-threading, for each program, we will use a separate file to store the output.
@@ -105,7 +105,28 @@ if plot_flag == 0
 #     output = [k_couple,k_uncouple,mean(v_translations),mean(v_transcriptions),mean(v_stalls),mean(v_unstalls),L,ℓ,Eᵦ,E_c, x₀, y₀ ,s₀ , p₀,type, μ, σ², μ_c]
 #     push!(df,output)
 # else
-df = DataFrame(k_couple = [k_couple], k_uncouple = [k_uncouple], v_translations = [v_translation_0], v_transcriptions = [v_transcription_0], v_stalls = [k_stalling_0], v_unstalls = [k_unstalling_0], k_ini_pausings = [k_ini_pausing], L = [L], ℓ = [ℓ], Eᵦ = [Eᵦ], E_c = [E_c], x₀ = [x₀], y₀ = [y₀], s₀ = [s₀], p₀ = [p₀],type=[type], μ = [μ], σ² = [σ²], μ_c = [μ_c])
+df = DataFrame(
+    k_couple = [k_couple], 
+    k_uncouple = [k_uncouple], 
+    v_translations = [v_translation_0], 
+    v_transcriptions = [v_transcription_0], 
+    v_stalls = [k_stalling_0], 
+    v_unstalls = [k_unstalling_0],
+    α = [k_translation_initiation],
+    k_ini_pausings = [k_ini_pausing],
+    L = [L],
+    ℓ = [ℓ],
+    Eᵦ = [Eᵦ],
+    E_c = [E_c],
+    x₀ = [x₀],
+    y₀ = [y₀],
+    s₀ = [s₀],
+    p₀ = [p₀],
+    type=[type],
+    μ = [μ],
+    σ² = [σ²],
+    μ_c = [μ_c]
+    )
 # end
 CSV.write("data/output_$(rand()).csv",df)
 using Distributions

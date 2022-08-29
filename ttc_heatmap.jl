@@ -33,7 +33,28 @@ else
     # if isfile("output.csv")
     #     df = CSV.read("output.csv",DataFrame)
     # else
-    df = DataFrame(k_couple = [], k_uncouple = [], v_translations = [], v_transcriptions = [], v_stalls = [], v_unstalls = [], k_ini_pausings = [], L = [], ℓ = [], Eᵦ = [], E_c = [], x₀ = [], y₀ = [], s₀ = [], p₀ = [],type=[], μ = [], σ² = [], μ_c = [])
+    df = DataFrame(
+            k_couple = [], 
+            k_uncouple = [], 
+            v_translations = [], 
+            v_transcriptions = [], 
+            v_stalls = [], 
+            v_unstalls = [], 
+            α = Float64[],
+            k_ini_pausings = [], 
+            L = [], 
+            ℓ = [], 
+            Eᵦ = [], 
+            E_c = [], 
+            x₀ = [], 
+            y₀ = [], 
+            s₀ = [], 
+            p₀ = [],
+            type=[], 
+            μ = [], 
+            σ² = [], 
+            μ_c = []
+        )
     # end
 
     for f in readdir("./data/",join=true)
@@ -87,8 +108,8 @@ y = ps
 # ylabel!("v_translation")
 # title!("mean coupling coefficient coupling_$(Eᵦ)")
 plot_df = DataFrame(
-    q = [],
     p = [],
+    q = [],
     C = []
 )
 for x in qs, y in ps
@@ -139,8 +160,8 @@ y = ps
 )
 
 plot_df = DataFrame(
-    q = [],
     p = [],
+    q = [],
     delay = []
 )
 for x in qs, y in ps
@@ -203,10 +224,8 @@ else
     cmds = []
     for p in ps
         for q in qs
-            for i in 1:N
                 cmd = `julia ttc_simu_base.jl $q $p $L $ℓ $k_translation_initiation $k_transcription_termination $Eᵦ $E_c $k_couple $k_stalling_0 $k_unstalling_0 $k_ini_pausing $d $type`
                 push!(cmds, cmd)
-            end
         end
     end
     @showprogress 1 pmap(run, cmds)
@@ -226,7 +245,7 @@ else
         E_c = Float64[], 
         x₀ = Int[], 
         y₀ = Int[], 
-        s₀ = Int[], 
+        s = Int[], 
         p₀ = Int[], 
         type = String[], 
         T_transcription = Float64[],
@@ -306,40 +325,7 @@ end
 CSV.write("fig/heatmap_f_T_$label.csv",plot_df)
 # pgfsave("fig/heatmap_f_T_$label.tex",axis)
 # pgfsave("fig/heatmap_f_T_$label.svg",axis)
-
-## Plot the uncoupled exposure fraction. Now deprecated.
-# z = zeros(Float64,length(qs),length(ps))
-
-# for x in ps, y in qs
-#     temp_df_0 = df[df.v_translations .== x,:]
-#     temp_df = temp_df_0[temp_df_0.v_transcriptions .== y,:]
-#     id_x = round(Int,(x-min)/step+1)
-#     id_y = round(Int,(y-min)/step+1)
-#     z[id_x,id_y] = mean([1 - temp_df.T_exposure_uncoupled[i]/temp_df.T_transcription[i] for i in 1:length(temp_df.T_transcription)])
-# end
-
-# using PGFPlotsX to generate heatmap instead of Plots
-# x = ps
-# y = qs
-# @pgf axis = Axis(
-#     {
-#         xlabel = "RNAP elongation rate \$q\$",
-#         ylabel = "ribosome translocation rate \$p\$",
-#         title = "fraction of protected time \$f_T\$",
-#         view = (0, 90),
-#         colorbar,
-#         "colormap/jet",
-#     },
-#     Plot3(
-#         {
-#             surf,
-#             shader = "flat",
-#         },
-#         Coordinates(x, y, transpose(z))
-#     )
-# )
-
-# # pgfsave("fig/heatmap_f_T_alter_$label.tex",axis)
-# # pgfsave("fig/heatmap_f_T_alter_$label.svg",axis)
-
-
+df_1 = CSV.read("fig/mean_coupling_coef_$(label).csv",DataFrame)
+df_2 = CSV.read("fig/simu_$(label).csv",DataFrame)
+df_3 = innerjoin(df_2,df_1, on = [:q,:p])
+CSV.write("fig/corr_C_$(label).csv",df_3)

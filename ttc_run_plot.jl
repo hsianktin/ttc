@@ -32,7 +32,7 @@ else
     end
     @showprogress 1 pmap(run, cmds)
 
-    df = DataFrame(k_couple = Float64[], k_uncouple = Float64[], v_translations = Float64[], v_transcriptions = Float64[], v_stalls = Float64[], v_unstalls = Float64[], k_ini_pausings = Float64[] , L = [], ℓ = [], Eᵦ = Float64[], E_c = Float64[], x₀ = Int[], y₀ = Int[], s₀ = Int[], p₀ = Int[], type=String[], μ = Float64[], σ² = Float64[], μ_c = Float64[])
+    df = DataFrame(k_couple = Float64[], k_uncouple = Float64[], v_translations = Float64[], v_transcriptions = Float64[], v_stalls = Float64[], v_unstalls = Float64[], α = Float64[], k_ini_pausings = Float64[] , L = [], ℓ = [], Eᵦ = Float64[], E_c = Float64[], x₀ = Int[], y₀ = Int[], s = Int[], p₀ = Int[], type=String[], μ = Float64[], σ² = Float64[], μ_c = Float64[])
     # end
 
     for f in readdir("./data/",join=true)

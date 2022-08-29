@@ -22,7 +22,7 @@ else
         E_c = Float64[], 
         x₀ = Int[], 
         y₀ = Int[], 
-        s₀ = Int[], 
+        s = Int[], 
         p₀ = Int[], 
         type = String[], 
         T_transcription = Float64[],
@@ -44,6 +44,64 @@ else
     CSV.write("simu_$(label).csv",df)
 end
 using LaTeXStrings
+
+if @isdefined approx_flag
+    include("ttc_approx.jl")
+    # group data by rate of translation
+    v_eff_transcription = Float64[]
+    std_eff_translation = Float64[]
+    v_eff_translation = Float64[]
+    std_eff_transcription = Float64[]
+    fractions_T_protected = Float64[]
+    fractions_T_protected_uncoupled = Float64[]
+    std_fractions_T_protected = Float64[]
+    std_fractions_T_protected_uncoupled = Float64[]
+    v_eff_est = Float64[]
+    F_T_est = Float64[]
+    C = Float64[]
+    C₊_est = Float64[]
+    Cₐ_est = Float64[]
+    for α in αs
+        T_transcriptions = df.T_transcription[df.α .== α]
+        T_translations = df.T_translation[df.α .== α]
+        push!(v_eff_transcription, L/mean(T_transcriptions))
+        push!(std_eff_transcription, (L/(mean(T_transcriptions)-std(T_transcriptions)) - L/(mean(T_transcriptions)+std(T_transcriptions)) )/2)
+        push!(v_eff_translation, L/mean(T_translations))
+        push!(std_eff_translation, (L/(mean(T_translations)-std(T_translations)) - L/(mean(T_translations)+std(T_translations)) )/2)
+        T_protecteds = df.T_exposure[df.α .== α]
+        T_transcriptions = df.T_transcription[df.α .== α]
+        T_protecteds_uncoupled = df.T_exposure_uncoupled[df.α .== α]
+        f_protecteds =T_protecteds ./ T_transcriptions
+        f_protecteds_uncoupled = T_protecteds_uncoupled ./ T_transcriptions
+        push!(fractions_T_protected, 1-mean(f_protecteds))
+        push!(std_fractions_T_protected, std(f_protecteds))
+        push!(fractions_T_protected_uncoupled, mean(f_protecteds_uncoupled))
+        push!(std_fractions_T_protected_uncoupled, std(f_protecteds_uncoupled))
+        push!(v_eff_est, V̄(p,k,k_couple,k_unstalling_0,k_stalling_0,Eᵦ,E_c,ℓ))
+        push!(F_T_est, 𝔼Fₜ(p,k,k_couple,k_unstalling_0,k_stalling_0,Eᵦ,E_c,ℓ,27))
+        push!(C₊_est, C₊(p,k,k_couple,k_unstalling_0,k_stalling_0,Eᵦ,E_c))
+        push!(Cₐ_est, Cₐ(p,k,k_couple,k_unstalling_0,k_stalling_0,Eᵦ,E_c, α, L))
+        push!(C, mean(df.s[df.α .== α]))
+    end
+
+    plot_df = DataFrame(
+            α=αs, 
+            v_eff_transcription=v_eff_transcription, 
+            std_eff_transcription=std_eff_transcription, 
+            v_eff_translation=v_eff_translation, 
+            std_eff_translation=std_eff_translation, 
+            fractions_T_protected=fractions_T_protected,
+            std_fractions_T_protected=std_fractions_T_protected,
+            fractions_T_protected_uncoupled=fractions_T_protected_uncoupled,
+            std_fractions_T_protected_uncoupled=std_fractions_T_protected_uncoupled,
+            v_eff_est=v_eff_est,
+            F_T_est=F_T_est,
+            C₊_est = C₊_est,
+            Cₐ_est = Cₐ_est,
+            C = C,
+        )
+    CSV.write("fig/simu_df_$(label).csv",plot_df)
+end
 
 
 # plot the effective velocity

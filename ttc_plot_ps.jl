@@ -1,3 +1,4 @@
+
 if isfile("simu_$(label).csv") & !overwrite    
     df = CSV.read("simu_$(label).csv",DataFrame)
 else
@@ -23,7 +24,7 @@ else
         E_c = Float64[], 
         x₀ = Int[], 
         y₀ = Int[], 
-        s₀ = Int[], 
+        s = Int[], 
         p₀ = Int[], 
         type = String[], 
         T_transcription = Float64[],
@@ -44,54 +45,169 @@ else
     end
     CSV.write("simu_$(label).csv",df)
 end
-include("ttc_approx.jl")
 
-# group data by rate of translation
-v_eff_transcription = Float64[]
-std_eff_translation = Float64[]
-v_eff_translation = Float64[]
-std_eff_transcription = Float64[]
-fractions_T_protected = Float64[]
-fractions_T_protected_uncoupled = Float64[]
-std_fractions_T_protected = Float64[]
-std_fractions_T_protected_uncoupled = Float64[]
-v_eff_est = Float64[]
-F_T_est = Float64[]
+if @isdefined approx_flag
+    if approx_flag == false
+        for p in ps
+            T_transcriptions = df.T_transcription[df.v_translations .== p]
+            T_translations = df.T_translation[df.v_translations .== p]
+            push!(v_eff_transcription, L/mean(T_transcriptions))
+            push!(std_eff_transcription, (L/(mean(T_transcriptions)-std(T_transcriptions)) - L/(mean(T_transcriptions)+std(T_transcriptions)) )/2)
+            push!(v_eff_translation, L/mean(T_translations))
+            push!(std_eff_translation, (L/(mean(T_translations)-std(T_translations)) - L/(mean(T_translations)+std(T_translations)) )/2)
+            T_protecteds = df.T_exposure[df.v_translations .== p]
+            T_transcriptions = df.T_transcription[df.v_translations .== p]
+            T_protecteds_uncoupled = df.T_exposure_uncoupled[df.v_translations .== p]
+            f_protecteds =T_protecteds ./ T_transcriptions
+            f_protecteds_uncoupled = T_protecteds_uncoupled ./ T_transcriptions
+            push!(fractions_T_protected, 1-mean(f_protecteds))
+            push!(std_fractions_T_protected, std(f_protecteds))
+            push!(fractions_T_protected_uncoupled, mean(f_protecteds_uncoupled))
+            push!(std_fractions_T_protected_uncoupled, std(f_protecteds_uncoupled))
+        end
+        
+        plot_df = DataFrame(
+                p=ps, 
+                v_eff_transcription=v_eff_transcription, 
+                std_eff_transcription=std_eff_transcription, 
+                v_eff_translation=v_eff_translation, 
+                std_eff_translation=std_eff_translation, 
+                fractions_T_protected=fractions_T_protected,
+                std_fractions_T_protected=std_fractions_T_protected,
+                fractions_T_protected_uncoupled=fractions_T_protected_uncoupled,
+                std_fractions_T_protected_uncoupled=std_fractions_T_protected_uncoupled,
+            )
+        CSV.write("fig/simu_df_$(label).csv",plot_df)
+    else
+        if isfile("output_$(label).csv") & !overwrite
+            df2 = CSV.read("output_$(label).csv", DataFrame)
+        else
+            cmds2 = []
+            for p in ps
+                cmd2 = `julia ttc_dynamics.jl $k $p $L $ℓ $k_translation_initiation $k_transcription_termination $Eᵦ $E_c $k_couple $k_stalling_0 $k_unstalling_0 $k_ini_pausing`
+                push!(cmds2, cmd2)
+            end
+            @showprogress 1 pmap(run, cmds2)
+            df2 = DataFrame(
+                k_couple = Float64[], 
+                k_uncouple = Float64[], 
+                v_translations = Float64[], 
+                v_transcriptions = Float64[], 
+                v_stalls = Float64[], 
+                v_unstalls = Float64[], 
+                α = Float64[],
+                k_ini_pausings = Float64[] , 
+                L = [], 
+                ℓ = [], 
+                Eᵦ = Float64[], 
+                E_c = Float64[], 
+                x₀ = Int[], 
+                y₀ = Int[], 
+                s = Int[], 
+                p₀ = Int[], 
+                type = String[], 
+                μ = Float64[], 
+                σ² = Float64[], 
+                μ_c = Float64[]
+            );
+            for f in readdir("./data/",join=true)
+                temp_df = CSV.read(f,DataFrame)
+                for i in 1:length(temp_df[:,1])
+                    push!(df2, temp_df[i,:])
+                end
+                rm(f)
+            end
+            CSV.write("output_$(label).csv",df2)
+        end 
+        include("ttc_approx.jl")
+        # group data by rate of translation
+        v_eff_transcription = Float64[]
+        std_eff_translation = Float64[]
+        v_eff_translation = Float64[]
+        std_eff_transcription = Float64[]
+        fractions_T_protected = Float64[]
+        fractions_T_protected_uncoupled = Float64[]
+        std_fractions_T_protected = Float64[]
+        std_fractions_T_protected_uncoupled = Float64[]
+        v_eff_est = Float64[]
+        F_T_est = Float64[]
+        C = Float64[]
+        C₊_est = Float64[]
+        Cₐ_est = Float64[]
+        for p in ps
+            T_transcriptions = df.T_transcription[df.v_translations .== p]
+            T_translations = df.T_translation[df.v_translations .== p]
+            push!(v_eff_transcription, L/mean(T_transcriptions))
+            push!(std_eff_transcription, (L/(mean(T_transcriptions)-std(T_transcriptions)) - L/(mean(T_transcriptions)+std(T_transcriptions)) )/2)
+            push!(v_eff_translation, L/mean(T_translations))
+            push!(std_eff_translation, (L/(mean(T_translations)-std(T_translations)) - L/(mean(T_translations)+std(T_translations)) )/2)
+            T_protecteds = df.T_exposure[df.v_translations .== p]
+            T_transcriptions = df.T_transcription[df.v_translations .== p]
+            T_protecteds_uncoupled = df.T_exposure_uncoupled[df.v_translations .== p]
+            f_protecteds =T_protecteds ./ T_transcriptions
+            f_protecteds_uncoupled = T_protecteds_uncoupled ./ T_transcriptions
+            push!(fractions_T_protected, 1-mean(f_protecteds))
+            push!(std_fractions_T_protected, std(f_protecteds))
+            push!(fractions_T_protected_uncoupled, mean(f_protecteds_uncoupled))
+            push!(std_fractions_T_protected_uncoupled, std(f_protecteds_uncoupled))
+            push!(v_eff_est, V̄(p,k,k_couple,k_unstalling_0,k_stalling_0,Eᵦ,E_c,ℓ))
+            push!(F_T_est, 𝔼Fₜ(p,k,k_couple,k_unstalling_0,k_stalling_0,Eᵦ,E_c,ℓ,27))
+            push!(C₊_est, C₊(p,k,k_couple,k_unstalling_0,k_stalling_0,Eᵦ,E_c))
+            push!(Cₐ_est, Cₐ(p,k,k_couple,k_unstalling_0,k_stalling_0,Eᵦ,E_c, k_translation_initiation, L))
+            push!(C, mean(df2.μ_c[df2.v_translations .== p]))
+        end
 
-for p in ps
-    T_transcriptions = df.T_transcription[df.v_translations .== p]
-    T_translations = df.T_translation[df.v_translations .== p]
-    push!(v_eff_transcription, L/mean(T_transcriptions))
-    push!(std_eff_transcription, (L/(mean(T_transcriptions)-std(T_transcriptions)) - L/(mean(T_transcriptions)+std(T_transcriptions)) )/2)
-    push!(v_eff_translation, L/mean(T_translations))
-    push!(std_eff_translation, (L/(mean(T_translations)-std(T_translations)) - L/(mean(T_translations)+std(T_translations)) )/2)
-    T_protecteds = df.T_exposure[df.v_translations .== p]
-    T_transcriptions = df.T_transcription[df.v_translations .== p]
-    T_protecteds_uncoupled = df.T_exposure_uncoupled[df.v_translations .== p]
-    f_protecteds =T_protecteds ./ T_transcriptions
-    f_protecteds_uncoupled = T_protecteds_uncoupled ./ T_transcriptions
-    push!(fractions_T_protected, 1-mean(f_protecteds))
-    push!(std_fractions_T_protected, std(f_protecteds))
-    push!(fractions_T_protected_uncoupled, mean(f_protecteds_uncoupled))
-    push!(std_fractions_T_protected_uncoupled, std(f_protecteds_uncoupled))
-    push!(v_eff_est, V̄(p,k,k_couple,k_unstalling_0,k_stalling_0,Eᵦ,E_c,ℓ))
-    push!(F_T_est, EFₜ(p,k,k_couple,k_unstalling_0,k_stalling_0,Eᵦ,E_c,ℓ,27))
+        plot_df = DataFrame(
+                p=ps, 
+                v_eff_transcription=v_eff_transcription, 
+                std_eff_transcription=std_eff_transcription, 
+                v_eff_translation=v_eff_translation, 
+                std_eff_translation=std_eff_translation, 
+                fractions_T_protected=fractions_T_protected,
+                std_fractions_T_protected=std_fractions_T_protected,
+                fractions_T_protected_uncoupled=fractions_T_protected_uncoupled,
+                std_fractions_T_protected_uncoupled=std_fractions_T_protected_uncoupled,
+                v_eff_est=v_eff_est,
+                F_T_est=F_T_est,
+                C₊_est = C₊_est,
+                Cₐ_est = Cₐ_est,
+                C = C,
+            )
+        CSV.write("fig/simu_df_$(label).csv",plot_df)
+    end   
+else
+    for p in ps
+        T_transcriptions = df.T_transcription[df.v_translations .== p]
+        T_translations = df.T_translation[df.v_translations .== p]
+        push!(v_eff_transcription, L/mean(T_transcriptions))
+        push!(std_eff_transcription, (L/(mean(T_transcriptions)-std(T_transcriptions)) - L/(mean(T_transcriptions)+std(T_transcriptions)) )/2)
+        push!(v_eff_translation, L/mean(T_translations))
+        push!(std_eff_translation, (L/(mean(T_translations)-std(T_translations)) - L/(mean(T_translations)+std(T_translations)) )/2)
+        T_protecteds = df.T_exposure[df.v_translations .== p]
+        T_transcriptions = df.T_transcription[df.v_translations .== p]
+        T_protecteds_uncoupled = df.T_exposure_uncoupled[df.v_translations .== p]
+        f_protecteds =T_protecteds ./ T_transcriptions
+        f_protecteds_uncoupled = T_protecteds_uncoupled ./ T_transcriptions
+        push!(fractions_T_protected, 1-mean(f_protecteds))
+        push!(std_fractions_T_protected, std(f_protecteds))
+        push!(fractions_T_protected_uncoupled, mean(f_protecteds_uncoupled))
+        push!(std_fractions_T_protected_uncoupled, std(f_protecteds_uncoupled))
+    end
+    
+    plot_df = DataFrame(
+            p=ps, 
+            v_eff_transcription=v_eff_transcription, 
+            std_eff_transcription=std_eff_transcription, 
+            v_eff_translation=v_eff_translation, 
+            std_eff_translation=std_eff_translation, 
+            fractions_T_protected=fractions_T_protected,
+            std_fractions_T_protected=std_fractions_T_protected,
+            fractions_T_protected_uncoupled=fractions_T_protected_uncoupled,
+            std_fractions_T_protected_uncoupled=std_fractions_T_protected_uncoupled,
+        )
+    CSV.write("fig/simu_df_$(label).csv",plot_df)
 end
 
-plot_df = DataFrame(
-    p=ps, 
-    v_eff_transcription=v_eff_transcription, 
-    std_eff_transcription=std_eff_transcription, 
-    v_eff_translation=v_eff_translation, 
-    std_eff_translation=std_eff_translation, 
-    fractions_T_protected=fractions_T_protected,
-    std_fractions_T_protected=std_fractions_T_protected,
-    fractions_T_protected_uncoupled=fractions_T_protected_uncoupled,
-    std_fractions_T_protected_uncoupled=std_fractions_T_protected_uncoupled,
-    v_eff_est=v_eff_est,
-    F_T_est=F_T_est
-    )
-CSV.write("fig/simu_df_$(label).csv",plot_df)
 
 
 using LaTeXStrings

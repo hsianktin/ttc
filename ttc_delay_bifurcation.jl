@@ -35,7 +35,7 @@ else
         push!(cmds, cmd)
     end
     @showprogress 1 pmap(run, cmds)
-    df = DataFrame(k_couple = [], k_uncouple = [], v_translations = [], v_transcriptions = [], v_stalls = [], v_unstalls = [], k_ini_pausings = [], L = [], ℓ = [], Eᵦ = [], E_c = [], x₀ = [], y₀ = [], s₀ = [], p₀ = [],type=[], μ = [], σ² = [], μ_c = [])
+    df = DataFrame(k_couple = [], k_uncouple = [], v_translations = [], v_transcriptions = [], v_stalls = [], v_unstalls = [], α = Float64[], k_ini_pausings = [], L = [], ℓ = [], Eᵦ = [], E_c = [], x₀ = [], y₀ = [], s₀ = [], p₀ = [],type=[], μ = [], σ² = [], μ_c = [])
     for f in readdir("./data/",join=true)
         temp_df = CSV.read(f,DataFrame)
         for i in 1:length(temp_df[:,1])
