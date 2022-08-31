@@ -6,7 +6,7 @@ L = 335;
 ℓ = 4;
 k_translation_initiation = 1.0;
 k_transcription_termination = 0.1;
-Eᵦ = 7;
+Eᵦ = 10;
 E_c = 1;
 k_couple = 100;
 k_stalling_0 = 0.4;
@@ -18,5 +18,5 @@ if length(ARGS) == 3
     E_c = parse(Float64, ARGS[3])
 end
 label = "ps_strong_binding" # 
-
+approx_flag = true
 include("../ttc_plot_ps.jl")

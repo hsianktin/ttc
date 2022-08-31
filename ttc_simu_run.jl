@@ -43,7 +43,7 @@ elseif length(ARGS) == 2
     else
         error("profile $(profile_name) not found...")
     end
-elseif length(ARGS) == 3
+elseif length(ARGS) >= 3
     profile_name = ARGS[1]
     overwrite = parse(Bool, ARGS[2])
     if isfile("profile/simu_$(profile_name).jl")

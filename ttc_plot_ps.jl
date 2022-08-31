@@ -1,5 +1,22 @@
 
-if isfile("simu_$(label).csv") & !overwrite    
+
+if isfile("simu_$(label).csv") & append_flag
+    df = CSV.read("simu_$(label).csv",DataFrame)
+    cmds = []
+    for p in ps
+        cmd = `julia ttc_simu_base.jl $k $p $L $ℓ $k_translation_initiation $k_transcription_termination $Eᵦ $E_c $k_couple $k_stalling_0 $k_unstalling_0 $k_ini_pausing $d $type $mode $N`
+        push!(cmds, cmd)
+    end
+    @showprogress 1 pmap(run, cmds)
+    for f in readdir("./data/",join=true)
+        temp_df = CSV.read(f,DataFrame)
+        for i in 1:length(temp_df[:,1])
+            push!(df, temp_df[i,:])
+        end
+        rm(f)
+    end
+    CSV.write("simu_$(label).csv",df)
+elseif isfile("simu_$(label).csv") & !overwrite    
     df = CSV.read("simu_$(label).csv",DataFrame)
 else
     cmds = []
@@ -48,6 +65,19 @@ end
 
 if @isdefined approx_flag
     if approx_flag == false
+        v_eff_transcription = Float64[]
+        std_eff_translation = Float64[]
+        v_eff_translation = Float64[]
+        std_eff_transcription = Float64[]
+        fractions_T_protected = Float64[]
+        fractions_T_protected_uncoupled = Float64[]
+        std_fractions_T_protected = Float64[]
+        std_fractions_T_protected_uncoupled = Float64[]
+        v_eff_est = Float64[]
+        F_T_est = Float64[]
+        C = Float64[]
+        C₊_est = Float64[]
+        Cₐ_est = Float64[]
         for p in ps
             T_transcriptions = df.T_transcription[df.v_translations .== p]
             T_translations = df.T_translation[df.v_translations .== p]
@@ -103,7 +133,7 @@ if @isdefined approx_flag
                 E_c = Float64[], 
                 x₀ = Int[], 
                 y₀ = Int[], 
-                s = Int[], 
+                s₀ = Int[], 
                 p₀ = Int[], 
                 type = String[], 
                 μ = Float64[], 
@@ -151,7 +181,7 @@ if @isdefined approx_flag
             push!(fractions_T_protected_uncoupled, mean(f_protecteds_uncoupled))
             push!(std_fractions_T_protected_uncoupled, std(f_protecteds_uncoupled))
             push!(v_eff_est, V̄(p,k,k_couple,k_unstalling_0,k_stalling_0,Eᵦ,E_c,ℓ))
-            push!(F_T_est, 𝔼Fₜ(p,k,k_couple,k_unstalling_0,k_stalling_0,Eᵦ,E_c,ℓ,27))
+            push!(F_T_est, Fₜ₊(p,k,k_couple,k_unstalling_0,k_stalling_0,Eᵦ,E_c,ℓ,27))
             push!(C₊_est, C₊(p,k,k_couple,k_unstalling_0,k_stalling_0,Eᵦ,E_c))
             push!(Cₐ_est, Cₐ(p,k,k_couple,k_unstalling_0,k_stalling_0,Eᵦ,E_c, k_translation_initiation, L))
             push!(C, mean(df2.μ_c[df2.v_translations .== p]))
@@ -176,6 +206,19 @@ if @isdefined approx_flag
         CSV.write("fig/simu_df_$(label).csv",plot_df)
     end   
 else
+    v_eff_transcription = Float64[]
+    std_eff_translation = Float64[]
+    v_eff_translation = Float64[]
+    std_eff_transcription = Float64[]
+    fractions_T_protected = Float64[]
+    fractions_T_protected_uncoupled = Float64[]
+    std_fractions_T_protected = Float64[]
+    std_fractions_T_protected_uncoupled = Float64[]
+    v_eff_est = Float64[]
+    F_T_est = Float64[]
+    C = Float64[]
+    C₊_est = Float64[]
+    Cₐ_est = Float64[]
     for p in ps
         T_transcriptions = df.T_transcription[df.v_translations .== p]
         T_translations = df.T_translation[df.v_translations .== p]
@@ -209,6 +252,82 @@ else
 end
 
 
+using StatsBase, LinearAlgebra
+using Pipe
+
+function pdf_corr(X,Y)
+    ∑(x) = sum(x)
+    min = @pipe minimum([X;Y]) |> floor(Int,_*10)/10
+    max = @pipe maximum([X;Y]) |> ceil(Int,_*10)/10
+    dx = (max - min)/minimum([length(X),length(Y)])*√(minimum([length(X),length(Y)]))
+    h_x = @pipe fit(Histogram, X, min:dx:max) |> 
+        normalize(_, mode=:pdf)
+    h_y = @pipe fit(Histogram, Y, min:dx:max) |> 
+        normalize(_, mode=:pdf)
+    f_x = h_x.weights
+    f_y = h_y.weights
+    ∫fgdx(f,g,dx) = ∑(f.*g)*dx
+    corr = ∫fgdx(f_x,f_y,dx)/√(∫fgdx(f_x,f_x,dx)*∫fgdx(f_y,f_y,dx))
+    return corr
+end
+
+# group df by the value of ps and qs
+gdf = @pipe df |> 
+    rename(_, :v_translations => :p) |> rename(_, :v_transcriptions => :q) |>
+    sort(_, [:p, :q]) |> 
+    groupby(_, [:p, :q])
+
+function empirical_distribution(df)
+    T_transcriptions = df.T_transcription 
+    T_translations = df.T_translation
+    tmin = 0.0
+    tmax = 60.0
+    dt = 0.5
+    function renormalize(x)
+        if maximum(x) == 0
+            return x
+        else
+            return x./maximum(x)
+        end
+    end
+    ρ_transcription = @pipe fit(Histogram, T_transcriptions, tmin:dt:tmax) |> 
+        normalize(_, mode=:pdf) |> replace(_.weights, NaN => 0) |> renormalize
+    ρ_translation = @pipe fit(Histogram, T_translations, tmin:dt:tmax) |>
+        normalize(_, mode=:pdf) |> replace(_.weights, NaN => 0) |> renormalize
+    
+    local p = df.p[1]
+    local q = df.q[1]
+    edf = DataFrame(
+        t = collect(tmin:dt:tmax-dt),
+        pdf_transcription = ρ_transcription,
+        pdf_translation = ρ_translation,
+        p = [p for i in tmin:dt:tmax-dt],
+        q = [q for i in tmin:dt:tmax-dt],
+    )
+    CSV.write("data/pdf_$(p)_$(q).csv",edf)
+    # return ρ_transcription, ρ_translation
+end
+
+for i in 1:length(gdf)
+    empirical_distribution(gdf[i])
+end
+
+pdf = DataFrame(
+    t = Float64[],
+    pdf_transcription = Float64[],
+    pdf_translation = Float64[],
+    p = Float64[],
+    q = Float64[],
+)
+for f in readdir("./data/",join=true)
+    temp_df = CSV.read(f,DataFrame)
+    for i in 1:length(temp_df[:,1])
+        push!(pdf, temp_df[i,:])
+    end
+    rm(f)
+end
+sort!(pdf,[:p,:q])
+CSV.write("fig/pdf_$(label).csv",pdf)
 
 using LaTeXStrings
 # plot the effective velocity
