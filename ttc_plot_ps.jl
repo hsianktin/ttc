@@ -109,46 +109,6 @@ if @isdefined approx_flag
             )
         CSV.write("fig/simu_df_$(label).csv",plot_df)
     else
-        if isfile("output_$(label).csv") & !overwrite
-            df2 = CSV.read("output_$(label).csv", DataFrame)
-        else
-            cmds2 = []
-            for p in ps
-                cmd2 = `julia ttc_dynamics.jl $k $p $L $ℓ $k_translation_initiation $k_transcription_termination $Eᵦ $E_c $k_couple $k_stalling_0 $k_unstalling_0 $k_ini_pausing`
-                push!(cmds2, cmd2)
-            end
-            @showprogress 1 pmap(run, cmds2)
-            df2 = DataFrame(
-                k_couple = Float64[], 
-                k_uncouple = Float64[], 
-                v_translations = Float64[], 
-                v_transcriptions = Float64[], 
-                v_stalls = Float64[], 
-                v_unstalls = Float64[], 
-                α = Float64[],
-                k_ini_pausings = Float64[] , 
-                L = [], 
-                ℓ = [], 
-                Eᵦ = Float64[], 
-                E_c = Float64[], 
-                x₀ = Int[], 
-                y₀ = Int[], 
-                s₀ = Int[], 
-                p₀ = Int[], 
-                type = String[], 
-                μ = Float64[], 
-                σ² = Float64[], 
-                μ_c = Float64[]
-            );
-            for f in readdir("./data/",join=true)
-                temp_df = CSV.read(f,DataFrame)
-                for i in 1:length(temp_df[:,1])
-                    push!(df2, temp_df[i,:])
-                end
-                rm(f)
-            end
-            CSV.write("output_$(label).csv",df2)
-        end 
         include("ttc_approx.jl")
         # group data by rate of translation
         v_eff_transcription = Float64[]
@@ -165,6 +125,8 @@ if @isdefined approx_flag
         C₊_est = Float64[]
         Cₐ_est = Float64[]
         for p in ps
+            S = df.s[df.v_translations .== p]
+            C_simu = mean(S)
             T_transcriptions = df.T_transcription[df.v_translations .== p]
             T_translations = df.T_translation[df.v_translations .== p]
             push!(v_eff_transcription, L/mean(T_transcriptions))
@@ -184,7 +146,7 @@ if @isdefined approx_flag
             push!(F_T_est, Fₜ₊(p,k,k_couple,k_unstalling_0,k_stalling_0,Eᵦ,E_c,ℓ,27,k_translation_initiation,L))
             push!(C₊_est, C₊(p,k,k_couple,k_unstalling_0,k_stalling_0,Eᵦ,E_c))
             push!(Cₐ_est, Cₐ(p,k,k_couple,k_unstalling_0,k_stalling_0,Eᵦ,E_c, k_translation_initiation, L))
-            push!(C, mean(df2.μ_c[df2.v_translations .== p]))
+            push!(C, C_simu)
         end
 
         plot_df = DataFrame(
