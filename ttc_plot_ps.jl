@@ -181,7 +181,7 @@ if @isdefined approx_flag
             push!(fractions_T_protected_uncoupled, mean(f_protecteds_uncoupled))
             push!(std_fractions_T_protected_uncoupled, std(f_protecteds_uncoupled))
             push!(v_eff_est, V̄(p,k,k_couple,k_unstalling_0,k_stalling_0,Eᵦ,E_c,ℓ))
-            push!(F_T_est, Fₜ₊(p,k,k_couple,k_unstalling_0,k_stalling_0,Eᵦ,E_c,ℓ,27))
+            push!(F_T_est, Fₜ₊(p,k,k_couple,k_unstalling_0,k_stalling_0,Eᵦ,E_c,ℓ,27,k_translation_initiation,L))
             push!(C₊_est, C₊(p,k,k_couple,k_unstalling_0,k_stalling_0,Eᵦ,E_c))
             push!(Cₐ_est, Cₐ(p,k,k_couple,k_unstalling_0,k_stalling_0,Eᵦ,E_c, k_translation_initiation, L))
             push!(C, mean(df2.μ_c[df2.v_translations .== p]))

@@ -20,7 +20,7 @@ end
 label = "ps_prediction" # 
 # approx_flag = true
 append_flag = false
-approx_flag = false
+approx_flag = true
 if length(ARGS) == 4
     approx_flag = parse(Bool, ARGS[4])
 end
