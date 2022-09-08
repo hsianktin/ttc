@@ -78,10 +78,10 @@ for Eᵦ in Eᵦs
     push!(std_fractions_T_protected, std(f_protecteds))
     push!(fractions_T_protected_uncoupled, mean(f_protecteds_uncoupled))
     push!(std_fractions_T_protected_uncoupled, std(f_protecteds_uncoupled))
-    push!(v_eff_est, V̄(p,k,k_couple,k_unstalling_0,k_stalling_0,Eᵦ,E_c,ℓ))
-    push!(F_T_est, Fₜ₊(p,k,k_couple,k_unstalling_0,k_stalling_0,Eᵦ,E_c,ℓ,27,k_translation_initiation,L))
+    push!(v_eff_est, V̄ₐ(p,k,k_couple,k_unstalling_0,k_stalling_0,Eᵦ,E_c,ℓ))
+    push!(F_T_est, Fₜ₊(p,k,k_couple,k_unstalling_0,k_stalling_0,Eᵦ,E_c,ℓ,27))
     push!(C₊_est, C₊(p,k,k_couple,k_unstalling_0,k_stalling_0,Eᵦ,E_c))
-    push!(Cₐ_est, Cₐ(p,k,k_couple,k_unstalling_0,k_stalling_0,Eᵦ,E_c, k_translation_initiation, L))
+    push!(Cₐ_est, C₊(p,k,k_couple,k_unstalling_0,k_stalling_0,Eᵦ,E_c))
     push!(C, C_simu)
 end
 

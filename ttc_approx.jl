@@ -1,65 +1,60 @@
-function V̄(p,q,kₐ,k₊,k₋,Eₐ,E₊,ℓ)
+function t1(p,q,kₐ,k₊,k₋,Eₐ,E₊)
     k₊⁺ = k₊ * exp(E₊)
-    return q*((q/p)^ℓ-1)/((q/p)^(ℓ+1)-1) * (k₊⁺/(k₊⁺+ k₋))
+    k_d = kₐ * exp(-Eₐ)
+    return (kₐ+k_d)/(k_d*q) * (1 + k₋/k₊⁺ + k₋*ℓ/p) * (1 - exp(ℓ * p/q))/(1-exp(p/q))
+end
+
+function t0(p,q,kₐ,k₊,k₋,Eₐ,E₊)
+    if q > p
+        p0 = exp(- p*k₋/((q-p)*k₊))
+    else 
+        p0 = 1
+    end
+    if q*(k₊)/(k₊+k₋) > p
+        return Inf
+    else
+        t0 = q/(p*k₋) + (1/k₋ + 1/k₊) * (q-p)/p*k₊/k₋+ (1-p0) * ((q-p)/(p/k₊ - (q-p)/k₋)*1/k₋*(1/k₋ + 1/k₊))
+        return t0
+    end
 end
 
 function V̄ₐ(p,q,kₐ,k₊,k₋,Eₐ,E₊,ℓ)
     k₊⁺ = k₊ * exp(E₊)
     k_d = kₐ * exp(-Eₐ)
-    t1 = (kₐ+k_d)/(k_d*(q-p)) * (1 + k₋*(1/k₊⁺ + ℓ/(p) + ℓ/(p-q)))
-    t2 = (q/(k₋ * p) + 1/kₐ) / (1-k₊/(k₊ + p/(q-p) *k₋))
-    return q*((((q/p)^ℓ-1)/((q/p)^(ℓ+1)-1))* t1/(1 + k₋*(1/k₊⁺ + ℓ/(p) + ℓ/(p-q))) + 1/k₋)/(t1 + t2)
-end
-
-using SpecialFunctions
-function 𝔼Fₜ(p,q,kₐ,k₊,k₋,Eₐ,E₊,ℓ,ℓₚ)
-    k₊⁺ = k₊ * exp(E₊)
-    k_d = kₐ * exp(-Eₐ)
-    t1 = (kₐ+k_d)/(k_d*(q-p)) * (1 + k₋*(1/k₊⁺ + ℓ/(p) + ℓ/(p-q)))
-    t2 = (q/(k₋ * p) + 1/kₐ)/  (1-k₊/(k₊ + p/(q-p) *k₋))
-    k₊⁺ = k₊ * exp(E₊)
-    return 1 - (maximum([((q-p)/k₋-ℓ)/((q-p)/k₋),0]))*1/2 * (1 - erf((ℓₚ-ℓ-(q-p)/k₋)/√(2*(p+q)/k₋))) * t2 / (t1 + t2)
-end
-function Fₜ₊(p,q,kₐ,k₊,k₋,Eₐ,E₊,ℓ,ℓₚ)
-    k₊⁺ = k₊ * exp(E₊)
-    k_d = kₐ * exp(-Eₐ)
-    t1 = (kₐ+k_d)/(k_d*(q-p)) * (1 + k₋*(1/k₊⁺ + ℓ/(p) + ℓ/(p-q)))
-    t2 = (q/(k₋ * p) + 1/kₐ)/  (1-k₊/(k₊ + p/(q-p) *k₋))
-    k₊⁺ = k₊ * exp(E₊)
-    return 1 - t2*exp(-k₋*(ℓₚ-ℓ)/(q-p))/(t1+t2)
-end
-
-function Fₜ₊(p,q,kₐ,k₊,k₋,Eₐ,E₊,ℓ,ℓₚ,α,L)
-    q̄ = k₊/(k₊ + k₋) * q
-    if L/q̄ - 1 /α < 0
-        return 0
-    else
-        Δ = (L*(p/q̄ - 1) - q̄/α)/√(L*p/q̄+q̄/α)#((10000/((k₊+k₋)*(q+p)))*(L/q̄ - 1/α))
-        return Prₙ(Δ) * Fₜ₊(p,q,kₐ,k₊,k₋,Eₐ,E₊,ℓ,ℓₚ)
-    end
+    v_c = (((q/p)^ℓ-1)/((q/p)^(ℓ+1)-1)) * q * k₊⁺/(k₊⁺+k₋)
+    v_f = p
+    p0 = t1(p,q,kₐ,k₊,k₋,Eₐ,E₊)/(t1(p,q,kₐ,k₊,k₋,Eₐ,E₊) + t0(p,q,kₐ,k₊,k₋,Eₐ,E₊))
+    return v_f * (1-p0) + v_c * p0
 end
 
 
 function C₊(p,q,kₐ,k₊,k₋,Eₐ,E₊)
     k₊⁺ = k₊ * exp(E₊)
     k_d = kₐ * exp(-Eₐ)
-    t1 = (kₐ+k_d)/(k_d*(q-p)) * (1 + k₋/k₊⁺)
-    t2 = (q/(k₋ * p) + 1/kₐ)/  (1-k₊/(k₊ + p/(q-p) *k₋))
-    return kₐ/(kₐ+k_d) * t1/(t1 + t2)
+    return kₐ/(kₐ+k_d) * t1(p,q,kₐ,k₊,k₋,Eₐ,E₊)/(t1(p,q,kₐ,k₊,k₋,Eₐ,E₊) + t0(p,q,kₐ,k₊,k₋,Eₐ,E₊))
 end
 
-function Prₙ(x)
-    # distribution function of standard normal distribution
-    return (1 + erf(x/√2)) / 2
-end
-
-function Cₐ(p,q,kₐ,k₊,k₋,Eₐ,E₊,α,L)
-    q̄ = k₊/(k₊ + k₋) * q
-    if L/q̄ - 1 /α < 0
-        return 0
-    else
-        Δ = (L*(p/q̄ - 1) - q̄/α)/√(L*p/q̄+q̄/α)#((10000/((k₊+k₋)*(q+p)))*(L/q̄ - 1/α))
-        return Prₙ(Δ) * C₊(p,q,kₐ,k₊,k₋,Eₐ,E₊)
+function Fₜ₊(p,q,kₐ,k₊,k₋,Eₐ,E₊,ℓ,ℓₚ)
+    if q > p
+    p0 = exp(- p*k₋/((q-p)*k₊))
+    else 
+    p0 = 1
     end
+    function te(p,q,kₐ,k₊,k₋,Eₐ,E₊)
+        if q*(k₊)/(k₊+k₋) > p
+            return Inf
+        else
+            te = (q/(p*k₋) + (1/k₋ + 1/k₊) * (q-p)/p*k₊/k₋) * (exp(-k₋*(ℓₚ-ℓ)/(q-p))) + (1-p0) * ((q-p)/(p/k₊ - (q-p)/k₋)*1/k₋*(1/k₋ + 1/k₊))
+            return te
+        end
+    end
+    k₊⁺ = k₊ * exp(E₊)
+    k_d = kₐ * exp(-Eₐ)
+    k₊⁺ = k₊ * exp(E₊)
+    return 1 -  te(p,q,kₐ,k₊,k₋,Eₐ,E₊)/(t1(p,q,kₐ,k₊,k₋,Eₐ,E₊)+t0(p,q,kₐ,k₊,k₋,Eₐ,E₊))
 end
-
+function C₀(Eₐ)
+    local kₐ = 1
+    k_d = kₐ * exp(-Eₐ)
+    return kₐ/(kₐ+k_d)
+end
