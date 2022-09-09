@@ -4,7 +4,7 @@ using OffsetArrays
 using CSV
 using Statistics
 using PGFPlotsX
-addprocs(7)
+addprocs(10)
 begin
     using ProgressMeter
 end
