@@ -1,0 +1,45 @@
+\RequirePackage{luatex85}
+\documentclass[tikz]{standalone}
+% Default preamble
+\usepackage{pgfplots}
+\pgfplotsset{compat=newest}
+\usepgfplotslibrary{groupplots}
+\usepgfplotslibrary{polar}
+\usepgfplotslibrary{smithchart}
+\usepgfplotslibrary{statistics}
+\usepgfplotslibrary{dateplot}
+\usepgfplotslibrary{ternary}
+% Custom preamble from global variable:
+\pgfplotsset{
+    discard if not/.style 2 args={
+        x filter/.code={
+            \edef\tempa{\thisrow{#1}}
+            \edef\tempb{#2}
+            \ifx\tempa\tempb
+            \else
+                \def\pgfmathresult{inf}
+            \fi
+        }
+    }
+}
+\begin{document}
+\begin{tikzpicture}
+\begin{axis}[width={3in}, height={3in}, clip={false}, ylabel={ribosome pushing efficiency $ \eta = \bar V_{\rm rib}/p$}, xlabel={mean protected fraction $ F_T$}, colorbar, colorbar style={width={0.2cm}}]
+    \addplot+[scatter, scatter src={explicit}]
+        table[x={fraction_protected}, y={efficiency}, col sep={comma}, meta={p}, discard if not={Ec}{0.0}] {merged_df_ps_var_E_cs_large_L.csv};
+    \addlegendentry {$E_+=0.0$}
+    \addplot+[scatter, scatter src={explicit}]
+        table[x={fraction_protected}, y={efficiency}, col sep={comma}, meta={p}, discard if not={Ec}{0.5}] {merged_df_ps_var_E_cs_large_L.csv};
+    \addlegendentry {$E_+=0.5$}
+    \addplot+[scatter, scatter src={explicit}]
+        table[x={fraction_protected}, y={efficiency}, col sep={comma}, meta={p}, discard if not={Ec}{1.0}] {merged_df_ps_var_E_cs_large_L.csv};
+    \addlegendentry {$E_+=1.0$}
+    \addplot+[scatter, scatter src={explicit}]
+        table[x={fraction_protected}, y={efficiency}, col sep={comma}, meta={p}, discard if not={Ec}{1.5}] {merged_df_ps_var_E_cs_large_L.csv};
+    \addlegendentry {$E_+=1.5$}
+    \addplot+[scatter, scatter src={explicit}]
+        table[x={fraction_protected}, y={efficiency}, col sep={comma}, meta={p}, discard if not={Ec}{2.0}] {merged_df_ps_var_E_cs_large_L.csv};
+    \addlegendentry {$E_+=2.0$}
+\end{axis}
+\end{tikzpicture}
+\end{document}

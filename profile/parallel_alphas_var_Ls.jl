@@ -1,9 +1,9 @@
 mode = "plain"
 label = "αs_var_Ls" # 
-N = 10000 # repeats, deprecated, set to 1 for performance.
+N = 1000 # repeats, deprecated, set to 1 for performance.
 q = 30 # v_transcription
 p = 20 # v_translation
-Ls = [l for l in 100:100:2000];
+Ls = [round(Int, 10.0^k) for k in 2:0.5:6];
 ℓ = 4;
 αs = [10.0^(k) for k in -3:1:1];
 k_transcription_termination = 0.1;
