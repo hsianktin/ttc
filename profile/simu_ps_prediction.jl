@@ -1,5 +1,5 @@
 mode = "plain"
-N = 1000 # 10s of repeats. The total number is 100.
+N = 100000 # 10s of repeats. The total number is 100.
 k = 30 # v_transcription
 ps = [i for i in 2:0.2:29] # v_translation
 L = 335;

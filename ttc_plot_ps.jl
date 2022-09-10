@@ -243,7 +243,7 @@ function empirical_distribution(df)
     T_transcriptions = df.T_transcription 
     T_translations = df.T_translation
     tmin = 0.0
-    tmax = 60.0
+    tmax = 70.0
     dt = 0.5
     function renormalize(x)
         if maximum(x) == 0
@@ -256,13 +256,13 @@ function empirical_distribution(df)
         normalize(_, mode=:pdf) |> replace(_.weights, NaN => 0) |> renormalize
     ρ_translation = @pipe fit(Histogram, T_translations, tmin:dt:tmax) |>
         normalize(_, mode=:pdf) |> replace(_.weights, NaN => 0) |> renormalize
-    
+    tmax = 60.0
     local p = df.p[1]
     local q = df.q[1]
     edf = DataFrame(
         t = collect(tmin:dt:tmax-dt),
-        pdf_transcription = ρ_transcription,
-        pdf_translation = ρ_translation,
+        pdf_transcription = ρ_transcription[1:length(collect(tmin:dt:tmax-dt))],
+        pdf_translation = ρ_translation[1:length(collect(tmin:dt:tmax-dt))],
         p = [p for i in tmin:dt:tmax-dt],
         q = [q for i in tmin:dt:tmax-dt],
     )
