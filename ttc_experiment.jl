@@ -1,7 +1,6 @@
 # a schematic model for the LacZ complemention system
-
+using CSV, DataFrames
 T = 10 # delay
-f(x) = exp(-(x - T)^2/2)/√(2π)
 using NumericalIntegration
 function ∫fdx(f,x,dx=1e-1)
     lin_space = collect(0:dx:x)
@@ -19,17 +18,8 @@ function ∫gdx(f,x,dx=1e-1)
         return 0
     end
 end
-F(x) = ∫fdx(f,x)
-G(x) = ∫fdx(F,x,1e-1)
 
 X = collect(0:0.1:20)
-fX = f.(X)
-FX = F.(X)
-@time GX = G.(X)
-
-root_array = Float64[]
-label_array = String[]
-
 
 function fit(X,GX)
     # GX = a*x + b
@@ -48,121 +38,63 @@ end
 function taking_positive(X)
     return [maximum([0,x]) for x in X]
 end
-using DataFrames
-plot_df = DataFrame(
-    x = X,
-    f = fX,
-    F = FX,
-    G = GX,
-    H = fit(X,GX) |> taking_positive
-)
-push!(root_array, intercept(X,GX))
-push!(label_array, "sample")
-CSV.write("fig/sample_df.csv", plot_df)
+
+function model(f,X,label)
+    ∫f(x) = ∫fdx(f,x)
+    ∫∫f(x) = ∫fdx(∫f,x,1e-1)
+    ∫∫∫f(x) = ∫fdx(∫∫f,x,1e-1)
+    fX = f.(X)
+    ∫fX = ∫f.(X)
+    ∫∫fX = ∫∫f.(X)
+    ∫∫∫fX = ∫∫∫f.(X)
+    S_mRNA = ∫∫fX
+    S_protein = sqrt.(∫∫∫fX)
+    S_protein² = ∫∫∫fX
+    fit_mRNA = fit(X,S_mRNA) |> taking_positive
+    T_mRNA = intercept(X,S_mRNA)
+    fit_protein = fit(X, S_protein) |> taking_positive
+    T_protein = intercept(X,S_protein)
+    temp_df = DataFrame(
+        t = X,
+        ρ = fX,
+        S_mRNA = S_mRNA,
+        S_protein = S_protein,
+        S_protein² = S_protein²,
+        fit_mRNA = fit_mRNA,
+        T_mRNA = T_mRNA,
+        fit_protein = fit_protein,
+        T_protein = T_protein,
+    )
+    CSV.write("fig/sample_df_$(label).csv",temp_df)
+    return (T_mRNA,T_protein)
+end
+f(x) = exp(-(x - T)^2/2)/√(2π)
 h(x) = exp(-(x - T)^2)/√(π)
 g(x) = (h(x) + h(x-5))/2
-Fg(x) = ∫fdx(g, x)
-FG(x) = ∫fdx(Fg, x)
-plot_df = DataFrame(
-    x = X,
-    f = g.(X),
-    F = Fg.(X),
-    G = FG.(X),
-    H = fit(X,FG.(X)) |> taking_positive
+w₀(x) = (f(x) + f(x+3))/2
+W₀ = ∫fdx(w₀,20)
+w(x) = w₀(x)/W₀
+Density = [
+    f,
+    g,
+    w,
+]
+Label = [
+    "unimodal",
+    "distinct_bimodal",
+    "adjacent_bimodal",
+]
+T_mRNA = []
+T_protein = []
+for (f,label) in zip(Density,Label)
+    t_mRNA, t_protein=model(f,X,label)
+    push!(T_mRNA,t_mRNA)
+    push!(T_protein,t_protein)
+end
+df = DataFrame(
+    Label = Label,
+    T_mRNA = T_mRNA,
+    T_protein = T_protein,
 )
+CSV.write("fig/sample_df_Ts.csv",df)
 
-push!(root_array, intercept(X,FG.(X)))
-push!(label_array, "distinct bimodal")
-
-CSV.write("fig/sample_distinct_bimodal.csv", plot_df)
-
-g(x) = (f(x) + f(x+3))/2
-Fg(x) = ∫fdx(g, x) 
-FG(x) = ∫fdx(Fg, x,0.1)
-
-plot_df = DataFrame(
-    x = X,
-    f = g.(X)./Fg(20),
-    F = Fg.(X)./ ∫fdx(g,20),
-    G = FG.(X)./ ∫fdx(g,20),
-    H = fit(X,FG.(X)./ ∫fdx(g,20)) |> taking_positive
-)
-CSV.write("fig/sample_adjacent_bimodal.csv", plot_df)
-
-push!(root_array, intercept(X,FG.(X)./ ∫fdx(g,20)))
-push!(label_array, "adjacent bimodal")
-
-root_df = DataFrame(
-    root = root_array,
-    label = label_array
-)
-
-CSV.write("fig/sample_roots.csv", root_df)
-
-# using PGFPlotsX
-# axis1 = @pgf Axis(
-#     {
-#         width = "3in",
-#         height = "3in",
-#         clip = "false",
-#         xlabel = "time \$t\$",
-#         ylabel = "linearized signal \$S(t)\$",
-#         # grid = "major",
-#         legend_pos  = "south east"
-#     },
-#     Plot(
-#         Table({x = "x", y = "G", "col sep"="comma"}, "sample_df.csv")
-#         ),
-#     Plot(
-#         Table({x = "x", y = "G", "col sep"="comma"}, "sample_distinct_bimodal.csv")
-#         ),
-#     Plot(
-#         Table({x = "x", y = "G", "col sep"="comma"}, "sample_adjacent_bimodal.csv")
-#         ),
-#     )
-    
-# axis2 = @pgf Axis(
-#     {
-#         width = "3in",
-#         height = "3in",
-#         clip = "false",
-#         xlabel = "time \$t\$",
-#         ylabel = " \$\\mathrm{Pr}(T \\leq t)\$",
-#         # grid = "major",
-#         legend_pos  = "south east"
-#     },
-#     Plot(
-#         Table({x = "x", y = "F", "col sep"="comma"}, "sample_df.csv")
-#         ),
-#     Plot(
-#         Table({x = "x", y = "F", "col sep"="comma"}, "sample_distinct_bimodal.csv")
-#         ),
-#     Plot(
-#         Table({x = "x", y = "F", "col sep"="comma"}, "sample_adjacent_bimodal.csv")
-#         ),
-# )
-# axis3 = @pgf Axis(
-#     {
-#         width = "3in",
-#         height = "3in",
-#         clip = "false",
-#         xlabel = "time \$t\$",
-#         ylabel = " \$\\rho_T(t)\$",
-#         # grid = "major",
-#         legend_pos  = "south east"
-#     },
-#     Plot(
-#         Table({x = "x", y = "f", "col sep"="comma"}, "sample_df.csv")
-#         ),
-#     Plot(
-#         Table({x = "x", y = "f", "col sep"="comma"}, "sample_distinct_bimodal.csv")
-#         ),
-
-#     Plot(
-#         Table({x = "x", y = "f", "col sep"="comma"}, "sample_adjacent_bimodal.csv")
-#         ),
-# )
-
-# pgfsave("fig/sample_plot_1.tex", axis1)
-# pgfsave("fig/sample_plot_2.tex", axis2)
-# pgfsave("fig/sample_plot_3.tex", axis3)

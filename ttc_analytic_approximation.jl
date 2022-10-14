@@ -6,7 +6,7 @@ function t1_t(p,q,kₐ,k₊,k₋,Eₐ,E₊)
     k₊⁺ = k₊ * exp(E₊)
     k_d = kₐ * exp(-Eₐ)
     # return (kₐ+k_d)/(k_d*q) * (1 + k₋/k₊⁺ + k₋*ℓ/p)  * (1 - exp(ℓ * p/q))/(1-exp(p/q))
-    return (kₐ+k_d)/(k_d) * (1 + k₋/k₊⁺ + k₋*ℓ/p)  * ( Tₙ(p,q)  ) *((q+p)/q)
+    return (kₐ+k_d)/(k_d) * (1 + k₋/(k₊⁺ + ℓ/p))  * ( Tₙ(p,q)  ) *((q+p)/q)
 end
 function t1_em(p,q,kₐ,k₊,k₋,Eₐ,E₊)
     k₊⁺ = k₊ * exp(E₊)
